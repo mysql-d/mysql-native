@@ -13,8 +13,6 @@ void main()
 
 void testMySql()
 {
-    immutable uint myFlags = SvrCapFlags.SECURE_PWD | SvrCapFlags.ALL_COLUMN_FLAGS | SvrCapFlags.PROTOCOL41 | SvrCapFlags.SECURE_CONNECTION | SvrCapFlags.WITH_DB; // | SvrCapFlags.MULTI_STATEMENTS | SvrCapFlags.MULTI_RESULTS;
-
 	auto mdb = new MysqlDB("localhost", "user", "password", "database");
 
 	auto c = mdb.lockConnection();
@@ -23,7 +21,7 @@ void testMySql()
 //   writefln("With currents stats : %s", c.serverStats());
 	auto caps = c.serverCapabilities;
 	writefln("MySQL Server %s with capabilities (%b):", c.serverVersion, caps);
-	if(caps && SvrCapFlags.SECURE_PWD)
+	if(caps && SvrCapFlags.OLD_LONG_PASSWORD)
 		writeln("\tLong passwords");
 	if(caps && SvrCapFlags.FOUND_NOT_AFFECTED)
 		writeln("\tReport rows found rather than rows affected");

@@ -19,8 +19,7 @@
  * $(UL
  *    $(LI Connection: $(UL $(LI Connection to the server, and querying and setting of server parameters.)))
  *    $(LI Command:  Handling of SQL requests/queries/commands, with principal methods:
- *       $(UL
-                $(LI execSQL() - plain old SQL query.)
+ *       $(UL $(LI execSQL() - plain old SQL query.)
  *            $(LI execTuple() - get a set of values from a select or similar query into a matching tuple of D variables.)
  *            $(LI execPrepared() - execute a prepared statement.)
  *            $(LI execResult() - execute a raw SQL statement and get a complete result set.)
@@ -2177,7 +2176,7 @@ protected:
         _sCharSet = packet.consume!ubyte(); // server_language
         _serverStatus = packet.consume!ushort(); //server_status
         _sCaps += cast(SvrCapFlags)(packet.consume!ushort() << 16); // server_capabilities (upper bytes)
-        _sCaps += SvrCapFlags.OLD_LONG_PASSWORD; // Assumed to be set since v4.1.1, according to spec
+        _sCaps |= SvrCapFlags.OLD_LONG_PASSWORD; // Assumed to be set since v4.1.1, according to spec
 
         enforceEx!MYX(_sCaps & SvrCapFlags.PROTOCOL41, "Server doesn't support protocol v4.1");
         enforceEx!MYX(_sCaps & SvrCapFlags.SECURE_CONNECTION, "Server doesn't support protocol v4.1 connection");
@@ -2416,14 +2415,14 @@ public:
      * then close the socket.
      *
      * Idiomatic use as follows is suggested:
-       ------------------
-       {
-           auto con = Connection("localhost:user:password:mysqld");
-           scope(exit) con.close();
-           // Use the connection
-           ...
-       }
-       ------------------
+     * ------------------
+     * {
+     *     auto con = Connection("localhost:user:password:mysqld");
+     *     scope(exit) con.close();
+     *     // Use the connection
+     *     ...
+     * }
+     * ------------------
      */
     void close()
     {
@@ -3655,23 +3654,23 @@ public:
      *
      * Parameter specializations can be added if required. This method could be used to add records from a data
      * entry form along the lines of
-------------
-auto c = Command(con, "insert into table42 values(?, ?, ?)");
-c.prepare();
-Variant[] va;
-va.length = 3;
-c.bindParameters(va);
-DataRecord dr;    // Some data input facility
-ulong ra;
-do
-{
-    dr.get();
-    va[0] = dr("Name");
-    va[1] = dr("City");
-    va[2] = dr("Whatever");
-    c.execPrepared(ra);
-} while(tod < "17:30");
-------------
+     * ------------
+     * auto c = Command(con, "insert into table42 values(?, ?, ?)");
+     * c.prepare();
+     * Variant[] va;
+     * va.length = 3;
+     * c.bindParameters(va);
+     * DataRecord dr;    // Some data input facility
+     * ulong ra;
+     * do
+     * {
+     *     dr.get();
+     *     va[0] = dr("Name");
+     *     va[1] = dr("City");
+     *     va[2] = dr("Whatever");
+     *     c.execPrepared(ra);
+     * } while(tod < "17:30");
+     * ------------
      * Params: va = External list of Variants to be used as parameters
      *                psnList = any required specializations
      */
@@ -3692,10 +3691,10 @@ do
      *
      * Another style of usage would simply update the parameter Variant directly
      *
-------------
-c.param(0) = 42;
-c.param(1) = "The answer";
-------------
+     * ------------
+     * c.param(0) = 42;
+     * c.param(1) = "The answer";
+     * ------------
      * Params: index = The zero based index
      */
     ref Variant param(uint index)
