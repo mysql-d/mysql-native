@@ -59,7 +59,6 @@ import mysql.sha1;
 import vibe.core.net;
 import vibe.utils.string;
 
-import core.thread : Fiber;
 import std.algorithm;
 import std.conv;
 import std.datetime;
@@ -78,123 +77,6 @@ class MySQLException: Exception
     this(string msg, string file, size_t line) { super(msg, file, line); }
 }
 alias MySQLException MYX;
-
-Command createCommand(Params...)(Connection cn, string query, Params params)
-{
-    auto cmd = Command(cn, query);
-    static if(params.length)
-    {
-        cmd.prepare();
-        Variant[] vparams;
-        size_t i;
-        foreach(param; params)
-        {
-            static if(is(typeof(param) == Variant[]))
-            {
-                foreach(vparam; param)
-                {
-                    if(i >= vparams.length)
-                        vparams.length += 10;
-                    vparams[i++] = vparam;
-                }
-            }
-            else
-            {
-                if(i >= vparams.length)
-                    vparams.length += 10;
-                vparams[i++] = Variant(param);
-            }
-        }
-        cmd.bindParameters(vparams[0 .. i]);
-    }
-    return cmd;
-}
-
-ResultSet queryEager(Params...)(Connection cn, string query, Params params)
-{
-    auto cmd = cn.createCommand(query, params);
-    static if(params.length)
-        return cmd.execPreparedResult();
-    else
-        return cmd.execSQLResult();
-}
-
-ResultSequence queryLazy(Params...)(Connection cn, string query, Params params)
-{
-    auto cmd = cn.createCommand(query, params);
-    static if(params.length)
-        return cmd.execPreparedSequence();
-    else
-        return cmd.execSQLSequence();
-}
-
-// Query with no result. Returns number of rows affected
-size_t exec(Params...)(Connection cn, string query, Params params)
-{
-    auto cmd = cn.createCommand(query, params);
-    size_t rowsAffected;
-    bool hasResult;
-    static if(params.length)
-        enforce(!cmd.execPrepared(rowsAffected), "Query returned results. Use query* methods instead");
-    else
-        assert(0, "not implemented");
-    return rowsAffected;
-}
-
-
-class FiberConnectionPool
-{
-    private Connection[Fiber] cns;
-    private Connection delegate() createConnection;
-
-    this(string host, string usr, string pwd, string db, ushort port=3306)
-    {
-        createConnection = () => new Connection(host, usr, pwd, db, port);
-    }
-
-    @property Connection connection()
-    in
-    {
-        assert(Fiber.getThis());
-    }
-    out(cn)
-    {
-        assert(cn);
-        //assert(!cn.closed); // Cannot call without ()...? Must be a dmd bug.
-        assert(cns[Fiber.getThis()]);
-    }
-    body
-    {
-        Connection cn;
-        auto cnp = Fiber.getThis() in cns;
-        if(cnp)
-            cn = *cnp;
-        else
-            cns[Fiber.getThis()] = cn = createConnection();
-
-        // the underlying socket might have been closed
-        if(cn.closed)
-            cns[Fiber.getThis()] = cn = createConnection();
-
-        assert(!cn.closed); // See bug in out contract
-        return cn;
-    }
-
-    void close()
-    {
-        foreach(fiber, cn; cns)
-        {
-            cn.acquire();
-            cn.close();
-        }
-        cns.clear();
-    }
-
-    ~this()
-    {
-        close();
-    }
-}
 
 /**
  * A simple struct to represent time difference.
