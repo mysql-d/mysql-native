@@ -845,7 +845,7 @@ SQLValue consumeNonBinaryValueIfComplete(T)(ref ubyte[] packet, bool unsigned)
 {
     SQLValue result;
     auto lcb = packet.decode!LCB();
-    result.isIncomplete = lcb.isIncomplete || packet.length <= (lcb.value+lcb.totalBytes);
+    result.isIncomplete = lcb.isIncomplete || packet.length < (lcb.value+lcb.totalBytes);
     result.isNull = lcb.isNull;
     if(!result.isIncomplete)
     {
@@ -939,12 +939,18 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
         case SQLType.SET:
         case SQLType.VARSTRING:
         case SQLType.STRING:
-            return packet.consumeIfComplete!string(binary, unsigned);
+            return packet.consumeIfComplete!string(false, unsigned);
         case SQLType.TINYBLOB:
         case SQLType.MEDIUMBLOB:
         case SQLType.BLOB:
         case SQLType.LONGBLOB:
-            return packet.consumeIfComplete!(ubyte[])(binary, unsigned);
+            auto lcb = packet.consumeIfComplete!LCB();
+            assert(!lcb.isIncomplete);
+            SQLValue result;
+            result.isIncomplete = false;
+            result.isNull = false;
+            result.value = packet.consume(cast(size_t)lcb.value);
+            return result;
     }
 }
 
