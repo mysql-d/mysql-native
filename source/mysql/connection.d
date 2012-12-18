@@ -319,7 +319,7 @@ ubyte[] pack(Date dt)
     }
     else
     {
-        rv.length = 4;
+        rv.length = 5;
         rv[0] = 4;
         rv[1] = cast(ubyte) ( dt.year       & 0xff);
         rv[2] = cast(ubyte) ((dt.year >> 8) & 0xff);
@@ -679,15 +679,7 @@ in
 }
 body
 {
-    auto numBytes = packet.front;
-    if(!numBytes)
-        return Date(0,0,0);
-
-    enforceEx!MYXProtocol(numBytes >= 4, "Binary date representation is too short");
-    auto year    = packet.consume!ushort();
-    auto month   = packet.consume!ubyte();
-    auto day     = packet.consume!ubyte();
-    return Date(year, month, day);
+    return toDate(packet);
 }
 
 DateTime consume(T:DateTime, ubyte N=T.sizeof)(ref ubyte[] packet)
