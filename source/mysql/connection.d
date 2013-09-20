@@ -167,7 +167,7 @@ private interface MySQLSocket
 private class MySQLSocketPhobos : MySQLSocket
 {
     private PlainPhobosSocket socket;
-    
+
     // The socket should already be open
     this(PlainPhobosSocket socket)
     {
@@ -175,7 +175,7 @@ private class MySQLSocketPhobos : MySQLSocket
         enforceEx!MYX(socket.isAlive, "Tried to use a closed Phobos socket - Maybe the 'openSocket' callback created a socket but forgot to open it?");
         this.socket = socket;
     }
-    
+
     invariant()
     {
         assert(!!socket);
@@ -186,19 +186,19 @@ private class MySQLSocketPhobos : MySQLSocket
         socket.shutdown(SocketShutdown.BOTH);
         socket.close();
     }
-    
+
     @property bool connected() const
     {
         return socket.isAlive;
     }
-    
+
     void read(ubyte[] dst)
     {
         auto bytesRead = socket.receive(dst);
         enforceEx!MYX(bytesRead == dst.length, "Wrong number of bytes read");
         enforceEx!MYX(bytesRead != socket.ERROR, "Received std.socket.Socket.ERROR");
     }
-    
+
     void write(in ubyte[] bytes)
     {
         socket.send(bytes);
@@ -233,17 +233,17 @@ version(Have_vibe_d) {
         {
             socket.close();
         }
-        
+
         @property bool connected() const
         {
             return socket.connected;
         }
-        
+
         void read(ubyte[] dst)
         {
             socket.read(dst);
         }
-        
+
         void write(in ubyte[] bytes)
         {
             socket.write(bytes);
@@ -287,7 +287,7 @@ struct TimeDiff
  *
  * Returns: A populated or default initialized TimeDiff struct.
  */
-TimeDiff toTimeDiff(ubyte[] a)
+TimeDiff toTimeDiff(in ubyte[] a) pure
 {
     enforceEx!MYXProtocol(a.length, "Supplied byte array is zero length");
     TimeDiff td;
@@ -344,7 +344,7 @@ TimeDiff toTimeDiff(string s)
  * Params: a = slice of a protocol packet beginning at the length byte for a chunk of time data
  * Returns: A populated or default initialized std.datetime.TimeOfDay struct.
  */
-TimeOfDay toTimeOfDay(ubyte[] a)
+TimeOfDay toTimeOfDay(in ubyte[] a) pure
 {
     enforceEx!MYXProtocol(a.length, "Supplied byte array is zero length");
     uint l = a[0];
@@ -387,7 +387,7 @@ TimeOfDay toTimeOfDay(string s)
  * Params: tod = TimeOfDay struct.
  * Returns: Packed ubyte[].
  */
-ubyte[] pack(TimeOfDay tod)
+ubyte[] pack(in TimeOfDay tod) pure nothrow
 {
     ubyte[] rv;
     if (tod == TimeOfDay.init)
@@ -415,7 +415,7 @@ ubyte[] pack(TimeOfDay tod)
  * Params: a = slice of a protocol packet beginning at the length byte for a chunk of Date data
  * Returns: A populated or default initialized std.datetime.Date struct.
  */
-Date toDate(ubyte[] a)
+Date toDate(in ubyte[] a) pure
 {
     enforceEx!MYXProtocol(a.length, "Supplied byte array is zero length");
     if (a[0] == 0)
@@ -455,7 +455,7 @@ Date toDate(string s)
  * Params: dt = std.datetime.Date struct.
  * Returns: Packed ubyte[].
  */
-ubyte[] pack(Date dt)
+ubyte[] pack(in Date dt) pure nothrow
 {
     ubyte[] rv;
     if (dt.year < 0)
@@ -485,7 +485,7 @@ ubyte[] pack(Date dt)
  *                       DateTime data
  * Returns: A populated or default initialized std.datetime.DateTime struct.
  */
-DateTime toDateTime(ubyte[] a)
+DateTime toDateTime(in ubyte[] a) pure
 {
     enforceEx!MYXProtocol(a.length, "Supplied byte array is zero length");
     if (a[0] == 0)
@@ -543,7 +543,7 @@ DateTime toDateTime(string s)
  * Params: x = A ulong e.g. 20111111122002UL.
  * Returns: A populated std.datetime.DateTime struct.
  */
-DateTime toDateTime(ulong x)
+DateTime toDateTime(ulong x) pure
 {
     int second = cast(int) x%100;
     x /= 100;
@@ -572,7 +572,7 @@ DateTime toDateTime(ulong x)
  * Params: dt = std.datetime.DateTime struct.
  * Returns: Packed ubyte[].
  */
-ubyte[] pack(DateTime dt)
+ubyte[] pack(in DateTime dt) pure nothrow
 {
     uint len = 1;
     if (dt.year || dt.month || dt.day) len = 5;
@@ -734,19 +734,19 @@ enum CommandType : ubyte
     STMT_FETCH          = 0x1c,
 }
 
-T consume(T)(MySQLSocket conn) {
+T consume(T)(MySQLSocket conn) pure {
     ubyte[T.sizeof] buffer;
     conn.read(buffer);
     ubyte[] rng = buffer;
     return consume!T(rng);
 }
 
-string consume(T:string, ubyte N=T.sizeof)(ref ubyte[] packet)
+string consume(T:string, ubyte N=T.sizeof)(ref ubyte[] packet) pure
 {
     return packet.consume!string(N);
 }
 
-string consume(T:string)(ref ubyte[] packet, size_t N)
+string consume(T:string)(ref ubyte[] packet, size_t N) pure
 in
 {
     assert(packet.length >= N);
@@ -757,7 +757,7 @@ body
 }
 
 /// Returns N number of bytes from the packet and advances the array
-ubyte[] consume()(ref ubyte[] packet, size_t N)
+ubyte[] consume()(ref ubyte[] packet, size_t N) pure nothrow
 in
 {
     assert(packet.length >= N);
@@ -769,7 +769,7 @@ body
     return result;
 }
 
-T decode(T:ulong)(in ubyte[] packet, size_t n)
+T decode(T:ulong)(in ubyte[] packet, size_t n) pure nothrow
 {
     switch(n)
     {
@@ -782,7 +782,8 @@ T decode(T:ulong)(in ubyte[] packet, size_t n)
     }
 }
 
-T consume(T)(ref ubyte[] packet, int n) if(isIntegral!T)
+T consume(T)(ref ubyte[] packet, int n) pure nothrow
+if(isIntegral!T)
 {
     switch(n)
     {
@@ -795,7 +796,7 @@ T consume(T)(ref ubyte[] packet, int n) if(isIntegral!T)
     }
 }
 
-TimeOfDay consume(T:TimeOfDay, ubyte N=T.sizeof)(ref ubyte[] packet)
+TimeOfDay consume(T:TimeOfDay, ubyte N=T.sizeof)(ref ubyte[] packet) pure
 in
 {
     static assert(N == T.sizeof);
@@ -818,7 +819,7 @@ body
     return tod;
 }
 
-Date consume(T:Date, ubyte N=T.sizeof)(ref ubyte[] packet)
+Date consume(T:Date, ubyte N=T.sizeof)(ref ubyte[] packet) pure
 in
 {
     static assert(N == T.sizeof);
@@ -828,7 +829,7 @@ body
     return toDate(packet.consume(5));
 }
 
-DateTime consume(T:DateTime, ubyte N=T.sizeof)(ref ubyte[] packet)
+DateTime consume(T:DateTime, ubyte N=T.sizeof)(ref ubyte[] packet) pure
 in
 {
     assert(packet.length);
@@ -858,7 +859,7 @@ body
     return DateTime(year, month, day, hour, minute, second);
 }
 
-@property bool hasEnoughBytes(T, ubyte N=T.sizeof)(in ubyte[] packet)
+@property bool hasEnoughBytes(T, ubyte N=T.sizeof)(in ubyte[] packet) pure
 in
 {
     static assert(T.sizeof >= N, T.stringof~" not large enough to store "~to!string(N)~" bytes");
@@ -868,7 +869,8 @@ body
     return packet.length >= N;
 }
 
-T decode(T, ubyte N=T.sizeof)(in ubyte[] packet) if(isIntegral!T)
+T decode(T, ubyte N=T.sizeof)(in ubyte[] packet) pure nothrow
+if(isIntegral!T)
 in
 {
     static assert(N == 1 || N == 2 || N == 3 || N == 4 || N == 8, "Cannot decode integral value. Invalid size: "~N.stringof);
@@ -904,13 +906,14 @@ body
     return value;
 }
 
-bool consume(T:bool, ubyte N=T.sizeof)(ref ubyte[] packet)
+bool consume(T:bool, ubyte N=T.sizeof)(ref ubyte[] packet) pure nothrow
 {
     static assert(N == 1);
     return packet.consume!ubyte() == 1;
 }
 
-T consume(T, ubyte N=T.sizeof)(ref ubyte[] packet) if(isIntegral!T)
+T consume(T, ubyte N=T.sizeof)(ref ubyte[] packet) pure nothrow
+if(isIntegral!T)
 in
 {
     static assert(N == 1 || N == 2 || N == 3 || N == 4 || N == 8, "Cannot consume integral value. Invalid size: "~N.stringof);
@@ -939,7 +942,8 @@ T myto(T)(string value)
         return to!T(value);
 }
 
-T decode(T, ubyte N=T.sizeof)(in ubyte[] packet) if(isFloatingPoint!T)
+T decode(T, ubyte N=T.sizeof)(in ubyte[] packet) pure nothrow
+if(isFloatingPoint!T)
 in
 {
     static assert((is(T == float) && N == float.sizeof)
@@ -952,7 +956,8 @@ body
     return result;
 }
 
-T consume(T, ubyte N=T.sizeof)(ref ubyte[] packet) if(isFloatingPoint!T)
+T consume(T, ubyte N=T.sizeof)(ref ubyte[] packet) pure nothrow
+if(isFloatingPoint!T)
 in
 {
     static assert((is(T == float) && N == float.sizeof)
@@ -970,7 +975,7 @@ struct SQLValue
     Variant _value;
 
     // empty template as a template and non-template won't be added to the same overload set
-    @property Variant value()()
+    @property inout(Variant) value()() inout
     {
         enforceEx!MYX(!isNull, "SQL value is null");
         enforceEx!MYX(!isIncomplete, "SQL value not complete");
@@ -984,7 +989,7 @@ struct SQLValue
         _value = value;
     }
 
-    invariant()
+    pure const nothrow invariant()
     {
         isNull && assert(!isIncomplete);
         isIncomplete && assert(!isNull);
@@ -1150,7 +1155,7 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
  *
  * Returns: 0 if it's a null value, or number of bytes in other cases
  * */
-byte getNumLCBBytes(ubyte lcbHeader)
+byte getNumLCBBytes(in ubyte lcbHeader) pure nothrow
 {
     switch(lcbHeader)
     {
@@ -1171,7 +1176,7 @@ byte getNumLCBBytes(ubyte lcbHeader)
  *
  * See_Also: http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol#Elements
  */
-ulong parseLCB(ref ubyte* ubp, out bool nullFlag)
+ulong parseLCB(ref ubyte* ubp, out bool nullFlag) pure nothrow
 {
     nullFlag = false;
     ulong t;
@@ -1220,7 +1225,7 @@ ulong parseLCB(ref ubyte* ubp, out bool nullFlag)
 }
 
 /// ditto
-ulong parseLCB(ref ubyte* ubp)
+ulong parseLCB(ref ubyte* ubp) pure nothrow
 {
     bool isNull;
     return parseLCB(ubp, isNull);
@@ -1242,7 +1247,7 @@ struct LCB
     ubyte numBytes;
 
     // Number of bytes total used for this LCB
-    @property ubyte totalBytes()
+    @property ubyte totalBytes() pure const nothrow
     {
         return cast(ubyte)(numBytes <= 1 ? 1 : numBytes+1);
     }
@@ -1250,7 +1255,7 @@ struct LCB
     /// The decoded value. This is always 0 if isNull or isIncomplete is set.
     ulong value;
 
-    invariant()
+    pure const nothrow invariant()
     {
         if(isIncomplete)
         {
@@ -1284,7 +1289,7 @@ struct LCB
  *
  * Returns: A decoded LCB value
  * */
-T consumeIfComplete(T:LCB)(ref ubyte[] packet)
+T consumeIfComplete(T:LCB)(ref ubyte[] packet) pure nothrow
 in
 {
     assert(packet.length >= 1, "packet has to include at least the LCB length byte");
@@ -1308,7 +1313,7 @@ body
     return lcb;
 }
 
-LCB decodeLCBHeader(in ubyte[] packet)
+LCB decodeLCBHeader(in ubyte[] packet) pure nothrow
 in
 {
     assert(packet.length >= 1, "packet has to include at least the LCB length byte");
@@ -1347,7 +1352,7 @@ body
  *
  * Returns: A decoded LCB value
  * */
-LCB decode(T:LCB)(in ubyte[] packet)
+LCB decode(T:LCB)(in ubyte[] packet) pure nothrow
 in
 {
     assert(packet.length >= 1, "packet has to include at least the LCB length byte");
@@ -1374,7 +1379,7 @@ struct LCS
  *
  * See_Also: http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol#Elements
  * */
-string consume(T:LCS)(ref ubyte[] packet)
+string consume(T:LCS)(ref ubyte[] packet) pure
 in
 {
     assert(packet.length >= 1, "LCS packet needs to store at least the LCB header");
@@ -1392,7 +1397,7 @@ body
 
 /** Skips over n items, advances the array, and return the newly advanced array to allow method chaining
  * */
-T[] skip(T)(ref T[] array, size_t n)
+T[] skip(T)(ref T[] array, size_t n) pure nothrow
 in
 {
     assert(n <= array.length);
@@ -1411,7 +1416,7 @@ body
  * value = The value to add to array
  * array = The array we should add the values for. It has to be large enough, and the values are packed starting index 0
  */
-void packInto(T, bool IsInt24 = false)(T value, ubyte[] array)
+void packInto(T, bool IsInt24 = false)(T value, ubyte[] array) pure nothrow
 in
 {
     static if(IsInt24)
@@ -1450,7 +1455,7 @@ body
     }
 }
 
-ubyte[] packLength(size_t l, out size_t offset)
+ubyte[] packLength(size_t l, out size_t offset) pure nothrow
 out(result)
 {
     assert(result.length >= 1);
@@ -1494,7 +1499,7 @@ body
     return t;
 }
 
-ubyte[] packLCS(void[] a)
+ubyte[] packLCS(void[] a) pure nothrow
 {
     size_t offset;
     ubyte[] t = packLength(a.length, offset);
@@ -1748,51 +1753,51 @@ public:
     }
 
     /// Database name for column as string
-    @property string db() { return _db; }
+    @property string db() pure const nothrow { return _db; }
 
     /// Table name for column as string - this could be an alias as in 'from tablename as foo'
-    @property string table() { return _table; }
+    @property string table() pure const nothrow { return _table; }
 
     /// Real table name for column as string
-    @property string originalTable() { return _originalTable; }
+    @property string originalTable() pure const nothrow { return _originalTable; }
 
     /// Column name as string - this could be an alias
-    @property string name() { return _name; }
+    @property string name() pure const nothrow { return _name; }
 
     /// Real column name as string
-    @property string originalName() { return _originalName; }
+    @property string originalName() pure const nothrow { return _originalName; }
 
     /// The character set in force
-    @property ushort charSet() { return _charSet; }
+    @property ushort charSet() pure const nothrow { return _charSet; }
 
     /// The 'length' of the column as defined at table creation
-    @property uint length() { return _length; }
+    @property uint length() pure const nothrow { return _length; }
 
     /// The type of the column hopefully (but not always) corresponding to enum SQLType. Only the low byte currently used
-    @property SQLType type() { return _type; }
+    @property SQLType type() pure const nothrow { return _type; }
 
     /// Column flags - unsigned, binary, null and so on
-    @property FieldFlags flags() { return _flags; }
+    @property FieldFlags flags() pure const nothrow { return _flags; }
 
     /// Precision for floating point values
-    @property ubyte scale() { return _scale; }
+    @property ubyte scale() pure const nothrow { return _scale; }
 
     /// NotNull from flags
-    @property bool notNull() { return (_flags & FieldFlags.NOT_NULL) != 0; }
+    @property bool notNull() pure const nothrow { return (_flags & FieldFlags.NOT_NULL) != 0; }
 
     /// Unsigned from flags
-    @property bool unsigned() { return (_flags & FieldFlags.UNSIGNED) != 0; }
+    @property bool unsigned() pure const nothrow { return (_flags & FieldFlags.UNSIGNED) != 0; }
 
     /// Binary from flags
-    @property bool binary() { return (_flags & FieldFlags.BINARY) != 0; }
+    @property bool binary() pure const nothrow { return (_flags & FieldFlags.BINARY) != 0; }
 
     /// Is-enum from flags
-    @property bool isenum() { return (_flags & FieldFlags.ENUM) != 0; }
+    @property bool isenum() pure const nothrow { return (_flags & FieldFlags.ENUM) != 0; }
 
     /// Is-set (a SET column that is) from flags
-    @property bool isset() { return (_flags & FieldFlags.SET) != 0; }
+    @property bool isset() pure const nothrow { return (_flags & FieldFlags.SET) != 0; }
 
-    void show()
+    void show() const
     {
         writefln("%s %d %x %016b", _name, _length, _type, _flags);
     }
@@ -1824,15 +1829,15 @@ public:
         _length = packet.consume!int();
         assert(!packet.length);
     }
-    @property uint length() { return _length; }
-    @property ushort type() { return _type; }
-    @property FieldFlags flags() { return _flags; }
-    @property ubyte scale() { return _scale; }
-    @property bool notNull() { return (_flags & FieldFlags.NOT_NULL) != 0; }
-    @property bool unsigned() { return (_flags & FieldFlags.UNSIGNED) != 0; }
+    @property uint length() pure const nothrow { return _length; }
+    @property ushort type() pure const nothrow { return _type; }
+    @property FieldFlags flags() pure const nothrow { return _flags; }
+    @property ubyte scale() pure const nothrow { return _scale; }
+    @property bool notNull() pure const nothrow { return (_flags & FieldFlags.NOT_NULL) != 0; }
+    @property bool unsigned() pure const nothrow { return (_flags & FieldFlags.UNSIGNED) != 0; }
 }
 
-bool isEOFPacket(ubyte[] packet)
+bool isEOFPacket(in ubyte[] packet) pure nothrow
 in
 {
     assert(!packet.empty);
@@ -1885,10 +1890,10 @@ public:
     }
 
     /// Retrieve the warning count
-    @property ushort warnings()     { return _warnings; }
+    @property ushort warnings() pure const nothrow { return _warnings; }
 
     /// Retrieve the server status
-    @property ushort serverStatus() { return _serverStatus; }
+    @property ushort serverStatus() pure const nothrow { return _serverStatus; }
 }
 
 /**
@@ -1955,17 +1960,17 @@ public:
     }
 
     /// Index into the set of field descriptions
-    FieldDescription opIndex(size_t i) { return _fieldDescriptions[i]; }
+    FieldDescription opIndex(size_t i) pure nothrow { return _fieldDescriptions[i]; }
     /// Get the number of fields in a result row.
-    @property fieldCount() { return _fieldDescriptions.length; }
+    @property size_t fieldCount() pure const nothrow { return _fieldDescriptions.length; }
     /// Get the warning count as per the EOF packet
-    @property ushort warnings() { return _warnings; }
+    @property ushort warnings() pure const nothrow { return _warnings; }
     /// Get an array of strings representing the column names
-    @property string[] fieldNames() { return _fieldNames; }
+    @property string[] fieldNames() pure nothrow { return _fieldNames; }
     /// Get an array of the field descriptions
-    @property FieldDescription[] fieldDescriptions() { return _fieldDescriptions; }
+    @property FieldDescription[] fieldDescriptions() pure nothrow { return _fieldDescriptions; }
 
-    void show()
+    void show() const
     {
         foreach (FieldDescription fd; _fieldDescriptions)
             fd.show();
@@ -2023,16 +2028,16 @@ public:
             enforceEx!MYXProtocol(getEOFPacket(), "Expected EOF packet in result header sequence");
     }
 
-    ParamDescription param(size_t i) { return _paramDescriptions[i]; }
-    FieldDescription col(size_t i) { return _colDescriptions[i]; }
+    ParamDescription param(size_t i) pure const nothrow { return _paramDescriptions[i]; }
+    FieldDescription col(size_t i) pure const nothrow { return _colDescriptions[i]; }
 
-    @property ParamDescription[] paramDescriptions() { return _paramDescriptions; }
-    @property FieldDescription[] fieldDescriptions() { return _colDescriptions; }
+    @property ParamDescription[] paramDescriptions() pure nothrow { return _paramDescriptions; }
+    @property FieldDescription[] fieldDescriptions() pure nothrow { return _colDescriptions; }
 
-    @property paramCount() { return _paramCount; }
-    @property ushort warnings() { return _warnings; }
+    @property paramCount() pure const nothrow { return _paramCount; }
+    @property ushort warnings() pure const nothrow { return _warnings; }
 
-    void showCols()
+    void showCols() const
     {
         writefln("%d columns", _colCount);
         foreach (FieldDescription fd; _colDescriptions)
@@ -2047,7 +2052,7 @@ public:
 
 /// Set packet length and number. It's important that the length of packet has
 /// already been set to the final state as its length is used
-void setPacketHeader(ref ubyte[] packet, ubyte packetNumber)
+void setPacketHeader(ref ubyte[] packet, ubyte packetNumber) pure nothrow
 in
 {
     // packet should include header, and possibly data
@@ -2060,7 +2065,7 @@ body
     packet.setPacketHeader(packetNumber, cast(uint)dataLength);
 }
 
-void setPacketHeader(ref ubyte[] packet, ubyte packetNumber, uint dataLength)
+void setPacketHeader(ref ubyte[] packet, ubyte packetNumber, uint dataLength) pure nothrow
 in
 {
     // packet should include header
@@ -2115,7 +2120,7 @@ protected:
 
     string _host, _user, _pwd, _db;
     ushort _port;
-    
+
     MySQLSocketType _socketType;
 
     OpenSocketCallbackPhobos _openSocketPhobos;
@@ -2130,11 +2135,11 @@ protected:
     void resetPacket()      { _cpn = 0; }
 
     version(Have_vibe_d) {} else
-    invariant()
+    pure const nothrow invariant()
     {
         assert(_socketType != MySQLSocketType.vibed);
     }
-    
+
     ubyte[] getPacket()
     {
         ubyte[4] header;
@@ -2201,7 +2206,7 @@ protected:
         {
             if(cmd == CommandType.QUIT)
                 return; // Don't bother reopening connection just to quit
-            
+
             _open = OpenState.notConnected;
             connect(_clientCapabilities);
         }
@@ -2327,7 +2332,7 @@ protected:
         s.connect(new InternetAddress(host, port));
         return s;
     }
-    
+
     static PlainVibeDSocket defaultOpenSocketVibeD(string host, ushort port)
     {
         version(Have_vibe_d)
@@ -2468,7 +2473,7 @@ public:
     {
         version(Have_vibe_d) {} else
             enforceEx!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_d");
-        
+
         this(socketType, &defaultOpenSocketPhobos, &defaultOpenSocketVibeD,
             host, user, pwd, db, port, capFlags);
     }
@@ -2479,7 +2484,7 @@ public:
     {
         this(MySQLSocketType.phobos, openSocket, null, host, user, pwd, db, port, capFlags);
     }
-    
+
     version(Have_vibe_d)
     ///ditto
     this(OpenSocketCallbackVibeD openSocket,
@@ -2487,7 +2492,7 @@ public:
     {
         this(MySQLSocketType.vibed, null, openSocket, host, user, pwd, db, port, capFlags);
     }
-    
+
     private this(MySQLSocketType socketType,
         OpenSocketCallbackPhobos openSocketPhobos, OpenSocketCallbackVibeD openSocketVibeD,
         string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
@@ -2515,7 +2520,7 @@ public:
 
         _openSocketPhobos = openSocketPhobos;
         _openSocketVibeD  = openSocketVibeD;
-        
+
         connect(capFlags);
     }
 
@@ -2627,7 +2632,7 @@ public:
 
             close();
         }
-        
+
         connect(clientCapabilities);
     }
 
@@ -2748,19 +2753,19 @@ public:
     }
 
     /// Return the in-force protocol number
-    @property ubyte protocol() { return _protocol; }
+    @property ubyte protocol() pure const nothrow { return _protocol; }
     /// Server version
-    @property string serverVersion() { return _serverVersion; }
+    @property string serverVersion() pure const nothrow { return _serverVersion; }
     /// Server capability flags
-    @property uint serverCapabilities() { return _sCaps; }
+    @property uint serverCapabilities() pure const nothrow { return _sCaps; }
     /// Server status
-    @property ushort serverStatus() { return _serverStatus; }
+    @property ushort serverStatus() pure const nothrow { return _serverStatus; }
     /// Current character set
-    @property ubyte charSet() { return _sCharSet; }
+    @property ubyte charSet() pure const nothrow { return _sCharSet; }
     /// Current database
-    @property string currentDB() { return _db; }
+    @property string currentDB() pure const nothrow { return _db; }
     /// Socket type being used
-    @property MySQLSocketType socketType() { return _socketType; }
+    @property MySQLSocketType socketType() pure const nothrow { return _socketType; }
 }
 
 /+
@@ -2874,7 +2879,7 @@ private:
         return (fieldCount+7+2)/8;
     }
 
-    static bool[] consumeNullBitmap(ref ubyte[] packet, uint fieldCount)
+    static bool[] consumeNullBitmap(ref ubyte[] packet, uint fieldCount) pure
     {
         uint bitmapLength = calcBitmapLength(fieldCount);
         enforceEx!MYXProtocol(packet.length >= bitmapLength, "Packet too small to hold null bitmap for all fields");
@@ -2883,7 +2888,7 @@ private:
     }
 
     // This is to decode the bitmap in a binary result row. First two bits are skipped
-    static bool[] decodeNullBitmap(ubyte[] bitmap, uint numFields)
+    static bool[] decodeNullBitmap(ubyte[] bitmap, uint numFields) pure nothrow
     in
     {
         assert(bitmap.length >= calcBitmapLength(numFields),
@@ -3000,7 +3005,7 @@ public:
      * Params: i = the zero based index of the column whose value is required.
      * Returns: A Variant holding the column value.
      */
-    Variant opIndex(size_t i)
+    inout(Variant) opIndex(size_t i) inout
     {
         enforceEx!MYX(i < _nulls.length, format("Cannot get column %d of %d. Index out of bounds", i, _nulls.length));
         enforceEx!MYX(!_nulls[i], format("Column %s is null, check for isNull", i));
@@ -3012,7 +3017,7 @@ public:
      *
      * Params: i = The zero based column index.
      */
-    @property bool isNull(size_t i) { return _nulls[i]; }
+    @property bool isNull(size_t i) const pure nothrow { return _nulls[i]; }
 
     /**
      * Move the content of the row into a compatible struct
@@ -3104,13 +3109,13 @@ public:
      * Make the ResultSet behave as a random access range - empty
      *
      */
-    @property bool empty() { return _curRows.length == 0; }
+    @property bool empty() const pure nothrow { return _curRows.length == 0; }
 
     /**
      * Make the ResultSet behave as a random access range - save
      *
      */
-    @property ResultSet save()
+    @property ResultSet save() pure nothrow
     {
         return this;
     }
@@ -3120,7 +3125,7 @@ public:
      *
      * Gets the first row in whatever remains of the Range.
      */
-    @property Row front()
+    @property inout(Row) front() pure inout
     {
         enforceEx!MYX(_curRows.length, "Attempted to get front of an empty ResultSet");
         return _curRows[0];
@@ -3131,7 +3136,7 @@ public:
      *
      * Gets the last row in whatever remains of the Range.
      */
-    @property Row back()
+    @property inout(Row) back() pure inout
     {
         enforceEx!MYX(_curRows.length, "Attempted to get back on an empty ResultSet");
         return _curRows[$-1];
@@ -3141,7 +3146,7 @@ public:
      * Make the ResultSet behave as a random access range - popFront()
      *
      */
-    void popFront()
+    void popFront() pure
     {
         enforceEx!MYX(_curRows.length, "Attempted to popFront() on an empty ResultSet");
         _curRows = _curRows[1..$];
@@ -3151,7 +3156,7 @@ public:
      * Make the ResultSet behave as a random access range - popBack
      *
      */
-    void popBack()
+    void popBack() pure
     {
         enforceEx!MYX(_curRows.length, "Attempted to popBack() on an empty ResultSet");
         _curRows = _curRows[0 .. $-1];
@@ -3162,7 +3167,7 @@ public:
      *
      * Gets the i'th row of whatever remains of the range
      */
-    Row opIndex(size_t i)
+    Row opIndex(size_t i) pure
     {
         enforceEx!MYX(_curRows.length, "Attempted to index into an empty ResultSet range.");
         enforceEx!MYX(i < _curRows.length, "Requested range index out of range");
@@ -3173,7 +3178,7 @@ public:
      * Make the ResultSet behave as a random access range - length
      *
      */
-    @property size_t length() { return _curRows.length; }
+    @property size_t length() pure const nothrow { return _curRows.length; }
 
     /**
      * Restore the range to its original span.
@@ -3181,7 +3186,7 @@ public:
      * Since the range is just a view of the data, we can easily revert to the
      * initial state.
      */
-    void revert()
+    void revert() pure nothrow
     {
         _curRows = _rows[];
     }
@@ -3207,17 +3212,17 @@ public:
     }
 
     /// Get the names of all the columns
-    @property const(string)[] colNames() { return _colNames; }
+    @property const(string)[] colNames() const pure nothrow { return _colNames; }
 
     /// An AA to lookup a column's index by name
-    @property const(size_t[string]) colNameIndicies()
+    @property const(size_t[string]) colNameIndicies() pure nothrow
     {
         if(_colNameIndicies is null)
         {
             foreach(index, name; _colNames)
                 _colNameIndicies[name] = index;
         }
-        
+
         return _colNameIndicies;
     }
 }
@@ -3247,7 +3252,7 @@ private:
         popFront();
     }
 
-    invariant()
+    pure const nothrow invariant()
     {
         assert(!_empty && _cmd); // command must exist while not empty
     }
@@ -3262,14 +3267,14 @@ public:
      * Make the ResultSequence behave as an input range - empty
      *
      */
-    @property bool empty() { return _empty; }
+    @property bool empty() const pure nothrow { return _empty; }
 
     /**
      * Make the ResultSequence behave as an input range - front
      *
      * Gets the current row
      */
-    @property Row front()
+    @property inout(Row) front() pure inout
     {
         enforceEx!MYX(!_empty, "Attempted 'front' on exhausted result sequence.");
         return _row;
@@ -3326,7 +3331,7 @@ public:
      *
      * Note that this is not neccessarlly the same as the length of the range.
      */
-    @property ulong rowCount() { return _numRowsFetched; }
+    @property ulong rowCount() const pure nothrow { return _numRowsFetched; }
 }
 
 /**
@@ -3361,7 +3366,7 @@ private:
         return true;
     }
 
-    static ubyte[] makeBitmap(ParameterSpecialization[] psa)
+    static ubyte[] makeBitmap(in ParameterSpecialization[] psa) pure nothrow
     {
         size_t bml = (psa.length+7)/8;
         ubyte[] bma;
@@ -3379,7 +3384,7 @@ private:
         return bma;
     }
 
-    ubyte[] makePSPrefix(ubyte flags = 0)
+    ubyte[] makePSPrefix(ubyte flags = 0) pure const nothrow
     {
         ubyte[] prefix;
         prefix.length = 14;
@@ -3728,7 +3733,7 @@ public:
     @property
     {
         /// Get the current SQL for the Command
-        string sql() { return _sql; }
+        string sql() pure const nothrow { return _sql; }
 
         /**
         * Set a new SQL command.
@@ -3964,7 +3969,7 @@ public:
      * ------------
      * Params: index = The zero based index
      */
-    ref Variant param(size_t index)
+    ref Variant param(size_t index) pure
     {
         enforceEx!MYX(_hStmt, "The statement must be prepared before parameters are bound.");
         enforceEx!MYX(index < _psParams, "Parameter index out of range.");
@@ -4443,20 +4448,20 @@ public:
 
     /// After a command that inserted a row into a table with an auto-increment
     /// ID column, this method allows you to retrieve the last insert ID.
-    @property ulong lastInsertID() { return _insertID; }
-    
+    @property ulong lastInsertID() pure const nothrow { return _insertID; }
+
     /// Gets the number of parameters in this Command
-    @property ushort numParams()
+    @property ushort numParams() pure const nothrow
     {
         return _psParams;
     }
 
     /// Gets the result header's field descriptions.
-    @property FieldDescription[] resultFieldDescriptions() { return _rsh.fieldDescriptions; }
+    @property FieldDescription[] resultFieldDescriptions() pure { return _rsh.fieldDescriptions; }
     /// Gets the prepared header's field descriptions.
-    @property FieldDescription[] preparedFieldDescriptions() { return _psh.fieldDescriptions; }
+    @property FieldDescription[] preparedFieldDescriptions() pure { return _psh.fieldDescriptions; }
     /// Gets the prepared header's param descriptions.
-    @property ParamDescription[] preparedParamDescriptions() { return _psh.paramDescriptions; }
+    @property ParamDescription[] preparedParamDescriptions() pure { return _psh.paramDescriptions; }
 }
 
 version(none) {
