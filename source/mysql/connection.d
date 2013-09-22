@@ -86,7 +86,10 @@ import std.variant;
  */
 class MySQLException: Exception
 {
-    this(string msg, string file, size_t line) { super(msg, file, line); }
+    this(string msg, string file = __FILE__, size_t line = __LINE__) pure
+    {
+        super(msg, file, line);
+    }
 }
 alias MySQLException MYX;
 
@@ -95,7 +98,10 @@ alias MySQLException MYX;
  */
 class MySQLProtocolException: MySQLException
 {
-    this(string msg, string file, size_t line) { super(msg, file, line); }
+    this(string msg, string file, size_t line) pure
+    {
+        super(msg, file, line);
+    }
 }
 alias MySQLProtocolException MYXProtocol;
 
@@ -110,12 +116,12 @@ class MySQLReceivedException: MySQLException
     ushort errorCode;
     char[5] sqlState;
 
-    this(OKErrorPacket okp, string file, size_t line)
+    this(OKErrorPacket okp, string file, size_t line) pure
     {
         this(okp.message, okp.serverStatus, okp.sqlState, file, line);
     }
 
-    this(string msg, ushort errorCode, char[5] sqlState, string file, size_t line)
+    this(string msg, ushort errorCode, char[5] sqlState, string file, size_t line) pure
     {
         this.errorCode = errorCode;
         this.sqlState = sqlState;
