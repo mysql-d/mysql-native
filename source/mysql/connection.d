@@ -1373,7 +1373,41 @@ body
     if(lcb.isNull || lcb.isIncomplete)
         return lcb;
     assert(packet.length >= lcb.totalBytes);
-    lcb.value = packet.decode!ulong(lcb.numBytes);
+    //lcb.value = packet.decode!ulong(lcb.numBytes);
+    lcb.value = 0;
+	switch (lcb.numBytes)
+	{
+		case 0: // Null - only for Row Data Packet
+			lcb.value = 0;
+			break;
+		case 8: // 64-bit
+			lcb.value |= packet[8];
+			lcb.value <<= 8;
+			lcb.value |= packet[7];
+			lcb.value <<= 8;
+			lcb.value |= packet[6];
+			lcb.value <<= 8;
+			lcb.value |= packet[5];
+			lcb.value <<= 8;
+			lcb.value |= packet[4];
+			lcb.value <<= 8;
+			goto case;
+		case 3: // 24-bit
+			lcb.value |= packet[3];
+			lcb.value <<= 8;
+			goto case;
+		case 2: // 16-bit
+			lcb.value |= packet[2];
+			lcb.value <<= 8;
+			lcb.value |= packet[1];
+			break;
+		case 1: // 8-bit
+			lcb.value = cast(ulong)packet[0];
+			break;
+		default:
+			assert(0);
+	}
+
     return lcb;
 }
 
