@@ -18,3 +18,4 @@
 # Executable file name when 'dub' is run on linux
 mysql-native
 /.project
+/.DS_Store
