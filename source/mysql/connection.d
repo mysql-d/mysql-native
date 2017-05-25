@@ -760,7 +760,7 @@ public:
 		exec(this, "start transaction");
 	}
 
-	void roolback()
+	void rollback()
 	{
 		exec(this, "rollback");
 	}
