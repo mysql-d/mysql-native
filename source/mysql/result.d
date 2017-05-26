@@ -385,12 +385,12 @@ public:
 	The row in question will be that which was the most recent subject of
 	front, back, or opIndex. If there have been no such references it will be front.
 	+/
-	Variant[string] asAA()
+	AARow asAA()
 	{
 		enforceEx!MYX(_curRows.length, "Attempted use of empty ResultSet as an associative array.");
-		Variant[string] aa;
+		AARow aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = front._values[i];
+			aa[s] = asString(front._values[i]);
 		return aa;
 	}
 
@@ -503,13 +503,13 @@ public:
 	/++
 	Get the current row as an associative array by column name
 	+/
-	Variant[string] asAA()
+	AARow asAA()
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		Variant[string] aa;
+		AARow aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = _row._values[i];
+			aa[s] = asString(_row._values[i]);
 		return aa;
 	}
 
@@ -548,3 +548,30 @@ public:
 ///ditto
 deprecated("Use ResultRange instead.")
 alias ResultSequence = ResultRange;
+
+
+alias AARow = string[string];
+
+private string asString(Variant src)
+{
+	if (!src.hasValue)
+	{
+		return string.init;
+	}
+	
+	if (src.convertsTo!string)
+	{
+		return src.get!string;
+	}
+	
+	import std.datetime;
+	
+	if (src.type == typeid(DateTime))
+	{
+		return (src.get!DateTime).toISOExtString();
+	}
+	else
+	{
+		return std.conv.to!string(src);
+	}
+}
