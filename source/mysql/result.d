@@ -554,6 +554,7 @@ alias AARow = string[string];
 
 private string asString(Variant src)
 {
+<<<<<<< HEAD
 	if (!src.hasValue)
 	{
 		return string.init;
@@ -562,6 +563,16 @@ private string asString(Variant src)
 	if (src.convertsTo!string)
 	{
 		return src.get!string;
+=======
+	if (src.convertsTo!string)
+	{
+		return src.get!string;
+	}
+	
+	if (!src.hasValue)
+	{
+		return string.init;
+>>>>>>> branch 'master' of https://github.com/shove70/mysql-native.git
 	}
 	
 	import std.datetime;
