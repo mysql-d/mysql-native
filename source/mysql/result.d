@@ -1,4 +1,4 @@
-﻿/// Structures for data received: rows and result sets (ie, a range of rows).
+/// Structures for data received: rows and result sets (ie, a range of rows).
 module mysql.result;
 
 import std.conv;
@@ -568,7 +568,9 @@ private string asString(Variant src)
 	
 	if (src.type == typeid(DateTime))
 	{
-		return (src.get!DateTime).toISOExtString();
+		DateTime dt = src.get!DateTime;
+		return dt.date().toISOExtString() ~ " " ~ dt.timeOfDay().toISOExtString();
+		//return (src.get!DateTime).toISOExtString();
 	}
 	else
 	{
