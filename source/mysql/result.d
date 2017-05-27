@@ -385,12 +385,12 @@ public:
 	The row in question will be that which was the most recent subject of
 	front, back, or opIndex. If there have been no such references it will be front.
 	+/
-	AARow asAA()
+	T asAA(T = Variant[string])()
 	{
 		enforceEx!MYX(_curRows.length, "Attempted use of empty ResultSet as an associative array.");
-		AARow aa;
+		T aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = asString(front._values[i]);
+			aa[s] = (T == typeid(AARow)) ? asString(front._values[i]) : front._values[i];
 		return aa;
 	}
 
@@ -503,13 +503,13 @@ public:
 	/++
 	Get the current row as an associative array by column name
 	+/
-	AARow asAA()
+	T asAA(T = Variant[string])()
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		AARow aa;
+		T aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = asString(_row._values[i]);
+			aa[s] = (T == typeid(AARow)) ? asString(_row._values[i]) : _row._values[i];
 		return aa;
 	}
 
