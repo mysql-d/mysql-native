@@ -755,6 +755,21 @@ public:
 		_open = OpenState.connected;
 	}
 
+	void startTransaction()
+	{
+		exec(this, "start transaction");
+	}
+
+	void rollback()
+	{
+		exec(this, "rollback");
+	}
+	
+	void commit()
+	{
+		exec(this, "commit");
+	}
+
 	/++
 	Parses a connection string of the form
 	`"host=localhost;port=3306;user=joe;pwd=pass123;db=myappsdb"`

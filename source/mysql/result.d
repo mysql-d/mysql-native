@@ -1,4 +1,4 @@
-﻿/// Structures for data received: rows and result sets (ie, a range of rows).
+/// Structures for data received: rows and result sets (ie, a range of rows).
 module mysql.result;
 
 import std.conv;
@@ -385,15 +385,15 @@ public:
 	The row in question will be that which was the most recent subject of
 	front, back, or opIndex. If there have been no such references it will be front.
 	+/
-	Variant[string] asAA()
+	T[string] asAA(T = Variant)()
 	{
 		enforceEx!MYX(_curRows.length, "Attempted use of empty ResultSet as an associative array.");
-		Variant[string] aa;
+		T[string] aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = front._values[i];
+			aa[s] = as!T(front._values[i]);
 		return aa;
 	}
-
+	
 	/// Get the names of all the columns
 	@property const(string)[] colNames() const pure nothrow { return _colNames; }
 
@@ -503,13 +503,13 @@ public:
 	/++
 	Get the current row as an associative array by column name
 	+/
-	Variant[string] asAA()
+	T[string] asAA(T = Variant)()
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		Variant[string] aa;
+		T[string] aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = _row._values[i];
+			aa[s] = as!T(_row._values[i]);
 		return aa;
 	}
 
@@ -548,3 +548,41 @@ public:
 ///ditto
 deprecated("Use ResultRange instead.")
 alias ResultSequence = ResultRange;
+
+
+private T as(T = Variant)(Variant v)
+{
+	if (is(T == string))
+	{
+		return asString(v).to!T;
+	}
+	else
+	{
+		return v.to!T;
+	}
+}
+
+private string asString(Variant src)
+{
+	if (!src.hasValue)
+	{
+		return string.init;
+	}
+	
+	if (src.convertsTo!string)
+	{
+		return src.get!string;
+	}
+	
+	import std.datetime;
+	
+	if (src.type == typeid(DateTime))
+	{
+		DateTime dt = src.get!DateTime;
+		return dt.date().toISOExtString() ~ " " ~ dt.timeOfDay().toISOExtString();
+	}
+	else
+	{
+		return std.conv.to!string(src);
+	}
+}
