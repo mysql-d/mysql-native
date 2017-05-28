@@ -385,15 +385,15 @@ public:
 	The row in question will be that which was the most recent subject of
 	front, back, or opIndex. If there have been no such references it will be front.
 	+/
-	T asAA(T = Variant[string])()
+	T[string] asAA(T = Variant)()
 	{
 		enforceEx!MYX(_curRows.length, "Attempted use of empty ResultSet as an associative array.");
-		T aa;
+		T[string] aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = (T == typeid(AARow)) ? asString(front._values[i]) : front._values[i];
+			aa[s] = as!T(front._values[i]);
 		return aa;
 	}
-
+	
 	/// Get the names of all the columns
 	@property const(string)[] colNames() const pure nothrow { return _colNames; }
 
@@ -503,13 +503,13 @@ public:
 	/++
 	Get the current row as an associative array by column name
 	+/
-	T asAA(T = Variant[string])()
+	T[string] asAA(T = Variant)()
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		T aa;
+		T[string] aa;
 		foreach (size_t i, string s; _colNames)
-			aa[s] = (T == typeid(AARow)) ? asString(_row._values[i]) : _row._values[i];
+			aa[s] = as!T(_row._values[i]);
 		return aa;
 	}
 
@@ -550,7 +550,17 @@ deprecated("Use ResultRange instead.")
 alias ResultSequence = ResultRange;
 
 
-alias AARow = string[string];
+private T as(T = Variant)(Variant v)
+{
+	if (is(T == string))
+	{
+		return asString(v).to!T;
+	}
+	else
+	{
+		return v.to!T;
+	}
+}
 
 private string asString(Variant src)
 {
@@ -570,7 +580,6 @@ private string asString(Variant src)
 	{
 		DateTime dt = src.get!DateTime;
 		return dt.date().toISOExtString() ~ " " ~ dt.timeOfDay().toISOExtString();
-		//return (src.get!DateTime).toISOExtString();
 	}
 	else
 	{
