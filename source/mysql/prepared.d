@@ -174,8 +174,8 @@ unittest
 		`);
 
 		auto preparedInsert2 = prepareProcedure(cn, "insert2", 2);
-		preparedInsert2.setArgs(2001, "inserted string 1");
-		preparedInsert2.exec();
+		preparedInsert2.setArgs(2001, "inserted string 1")
+		               .exec();
 
 		ResultSet rs = querySet(cn, "SELECT stringcol FROM basetest WHERE intcol=2001");
 		assert(rs.length == 1);
@@ -905,7 +905,7 @@ public:
 
 	Params: index = The zero based index
 	+/
-	void setArg(T)(size_t index, T val, ParameterSpecialization psn = PSN(0, SQLType.INFER_FROM_D_TYPE, 0, null))
+	auto ref setArg(T)(size_t index, T val, ParameterSpecialization psn = PSN(0, SQLType.INFER_FROM_D_TYPE, 0, null))
 		if(!isInstanceOf!(Nullable, T))
 	{
 		// Now in theory we should be able to check the parameter type here, since the
@@ -922,15 +922,19 @@ public:
 		_inParams[index] = val;
 		psn.pIndex = index;
 		_psa[index] = psn;
+		
+		return this;
 	}
 
-	void setArg(T)(size_t index, Nullable!T val, ParameterSpecialization psn = PSN(0, SQLType.INFER_FROM_D_TYPE, 0, null))
+	auto ref setArg(T)(size_t index, Nullable!T val, ParameterSpecialization psn = PSN(0, SQLType.INFER_FROM_D_TYPE, 0, null))
 	{
 		enforceNotReleased();
 		if(val.isNull)
 			setArg(index, null, psn);
 		else
 			setArg(index, val.get(), psn);
+			
+		return this;
 	}
 
 	/++
@@ -942,7 +946,7 @@ public:
 	The tuple must match the required number of parameters, and it is the programmer's
 	responsibility to ensure that they are of appropriate types.
 	+/
-	void setArgs(T...)(T args)
+	auto ref setArgs(T...)(T args)
 		if(T.length == 0 || !is(T[0] == Variant[]))
 	{
 		enforceNotReleased();
@@ -950,6 +954,8 @@ public:
 
 		foreach (size_t i, arg; args)
 			setArg(i, arg);
+			
+		return this;
 	}
 
 	/++
@@ -980,7 +986,7 @@ public:
 	Params: va = External list of Variants to be used as parameters
 	               psnList = any required specializations
 	+/
-	void setArgs(Variant[] va, ParameterSpecialization[] psnList= null)
+	auto ref setArgs(Variant[] va, ParameterSpecialization[] psnList= null)
 	{
 		enforceNotReleased();
 		enforceEx!MYX(va.length == _psParams, "Param count supplied does not match prepared statement");
@@ -990,6 +996,8 @@ public:
 			foreach (PSN psn; psnList)
 				_psa[psn.pIndex] = psn;
 		}
+		
+		return this;
 	}
 
 	/++
@@ -1012,10 +1020,12 @@ public:
 
 	Params: index = The zero based index
 	+/
-	void setNullArg(size_t index)
+	auto ref setNullArg(size_t index)
 	{
 		enforceNotReleased();
 		setArg(index, null);
+		
+		return this;
 	}
 
 	/// Gets the SQL command for this prepared statement
@@ -1059,22 +1069,22 @@ public:
 			assert(preparedInsert.getArg(0) == 7);
 		}
 
-		preparedInsert.setArg(0, 5);
-		preparedInsert.exec();
+		preparedInsert.setArg(0, 5)
+		              .exec();
 		rs = cn.querySet(selectSQL);
 		assert(rs.length == 1);
 		assert(rs[0][0] == 5);
 
-		preparedInsert.setArg(0, null);
-		preparedInsert.exec();
+		preparedInsert.setArg(0, null)
+		              .exec();
 		rs = cn.querySet(selectSQL);
 		assert(rs.length == 2);
 		assert(rs[0][0] == 5);
 		assert(rs[1].isNull(0));
 		assert(rs[1][0].type == typeid(typeof(null)));
 
-		preparedInsert.setArg(0, Variant(null));
-		preparedInsert.exec();
+		preparedInsert.setArg(0, Variant(null))
+		              .exec();
 		rs = cn.querySet(selectSQL);
 		assert(rs.length == 3);
 		assert(rs[0][0] == 5);
