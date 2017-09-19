@@ -430,13 +430,17 @@ Or, you can use `querySet` to obtain a `ResultSet` instead.
 struct ResultRange
 {
 private:
-	Connection       _con;
-	ResultSetHeaders _rsh;
-	Row              _row; // current row
-	string[]         _colNames;
-	size_t[string]   _colNameIndicies;
-	ulong            _numRowsFetched;
-	ulong            _commandID; // So we can keep track of when this is invalidated
+	struct Shared
+	{
+		Connection       _con;
+		ResultSetHeaders _rsh;
+		Row              _row; // current row
+		string[]         _colNames;
+		size_t[string]   _colNameIndicies;
+		ulong            _numRowsFetched;
+		ulong            _commandID; // So we can keep track of when this is invalidated
+		size_t           _num_refs;
+	}
 
 	void ensureValid() const pure
 	{
@@ -444,26 +448,46 @@ private:
 			"This ResultRange has been invalidated and can no longer be used.");
 	}
 
+	Shared* _shared;
 package:
 	this (Connection con, ResultSetHeaders rsh, string[] colNames)
 	{
-		_con       = con;
-		_rsh       = rsh;
-		_colNames  = colNames;
-		_commandID = con.lastCommandID;
+		this._shared = new Shared;
+
+		with (*this._shared)
+		{
+			_con       = con;
+			_rsh       = rsh;
+			_colNames  = colNames;
+			_commandID = con.lastCommandID;
+			_num_refs++;
+		}
+
 		popFront();
 	}
 
 public:
+	this (this)
+	{
+		this._shared._num_refs++;
+	}
+
 	~this()
 	{
-		close();
+		this._shared._num_refs--;
+
+		if (this._shared._num_refs == 0)
+		{
+			close();
+			delete this._shared;
+		}
 	}
 
 	/// Check whether the range can still we used, or has been invalidated
 	@property bool isValid() const pure nothrow
 	{
-		return _con !is null && _commandID == _con.lastCommandID;
+		with (*this._shared)
+		    return _con !is null && _commandID == _con.lastCommandID;
 	}
 
 	/// Make the ResultRange behave as an input range - empty
@@ -472,32 +496,36 @@ public:
 		if(!isValid)
 			return true;
 
-		return !_con._rowsPending;
+		return !this._shared._con._rowsPending;
 	}
 
 	/++
 	Make the ResultRange behave as an input range - front
-	
+
 	Gets the current row
 	+/
 	@property inout(Row) front() pure inout
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		return _row;
+		return this._shared._row;
 	}
 
 	/++
 	Make the ResultRange behave as am input range - popFront()
-	
+
 	Progresses to the next row of the result set - that will then be 'front'
 	+/
 	void popFront()
 	{
 		ensureValid();
 		enforceEx!MYX(!empty, "Attempted 'popFront' when no more rows available");
-		_row = _con.getNextRow();
-		_numRowsFetched++;
+
+		with (*this._shared)
+		{
+			_row = _con.getNextRow();
+			_numRowsFetched++;
+		}
 	}
 
 	/++
@@ -506,26 +534,36 @@ public:
 	Variant[string] asAA()
 	{
 		ensureValid();
-		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
-		Variant[string] aa;
-		foreach (size_t i, string s; _colNames)
-			aa[s] = _row._values[i];
-		return aa;
+
+		with (*this._shared)
+		{
+			enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
+			Variant[string] aa;
+			foreach (size_t i, string s; _colNames)
+				aa[s] = _row._values[i];
+			return aa;
+		}
 	}
 
 	/// Get the names of all the columns
-	@property const(string)[] colNames() const pure nothrow { return _colNames; }
+	@property const(string)[] colNames() const pure nothrow
+	{
+		return this._shared._colNames;
+	}
 
 	/// An AA to lookup a column's index by name
 	@property const(size_t[string]) colNameIndicies() pure nothrow
 	{
-		if(_colNameIndicies is null)
+		with (*this._shared)
 		{
-			foreach(index, name; _colNames)
-				_colNameIndicies[name] = index;
-		}
+			if(_colNameIndicies is null)
+			{
+				foreach(index, name; _colNames)
+					_colNameIndicies[name] = index;
+			}
 
-		return _colNameIndicies;
+			return _colNameIndicies;
+		}
 	}
 
 	/// Explicitly clean up the MySQL resources and cancel pending results
@@ -534,15 +572,18 @@ public:
 	body
 	{
 		if(isValid)
-			_con.purgeResult();
+			this._shared._con.purgeResult();
 	}
 
 	/++
 	Get the number of currently retrieved.
-	
+
 	Note that this is not neccessarlly the same as the length of the range.
 	+/
-	@property ulong rowCount() const pure nothrow { return _numRowsFetched; }
+	@property ulong rowCount() const pure nothrow
+	{
+		return this._shared._numRowsFetched;
+	}
 }
 
 ///ditto
