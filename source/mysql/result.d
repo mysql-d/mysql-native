@@ -95,16 +95,16 @@ public:
 
 	/++
 	A constructor to extract the column data from a row data packet.
-	
+
 	If the data for the row exceeds the server's maximum packet size, then several packets will be
 	sent for the row that taken together constitute a logical row data packet. The logic of the data
 	recovery for a Row attempts to minimize the quantity of data that is bufferred. Users can assist
 	in this by specifying chunked data transfer in cases where results sets can include long
 	column values.
-	
+
 	The row struct is used for both 'traditional' and 'prepared' result sets. It consists of parallel arrays
 	of Variant and bool, with the bool array indicating which of the result set columns are NULL.
-	
+
 	I have been agitating for some kind of null indicator that can be set for a Variant without destroying
 	its inherent type information. If this were the case, then the bool array could disappear.
 	However, this inherent type information was never actually used, or even tracked, by struct Row for null fields.
@@ -164,10 +164,10 @@ public:
 
 	/++
 	Simplify retrieval of a column value by index.
-	
+
 	To check for null, use Variant's .type property:
 	`row[index].type == typeid(typeof(null))`
-	
+
 	Params: i = the zero based index of the column whose value is required.
 	Returns: A Variant holding the column value.
 	+/
@@ -180,7 +180,7 @@ public:
 
 	/++
 	Check if a column in the result row was NULL
-	
+
 	Params: i = The zero based column index.
 	+/
 	bool isNull(size_t i) const pure nothrow { return _nulls[i]; }
@@ -195,13 +195,13 @@ public:
 
 	/++
 	Move the content of the row into a compatible struct
-	
+
 	This method takes no account of NULL column values. If a column was NULL,
 	the corresponding Variant value would be unchanged in those cases.
-	
+
 	The method will throw if the type of the Variant is not implicitly
 	convertible to the corresponding struct member.
-	
+
 	Params: S = a struct type.
 	               s = an ref instance of the type
 	+/
@@ -294,13 +294,13 @@ package:
 public:
 	/++
 	Make the ResultSet behave as a random access range - empty
-	
+
 	+/
 	@property bool empty() const pure nothrow { return _curRows.length == 0; }
 
 	/++
 	Make the ResultSet behave as a random access range - save
-	
+
 	+/
 	@property ResultSet save() pure nothrow
 	{
@@ -309,7 +309,7 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - front
-	
+
 	Gets the first row in whatever remains of the Range.
 	+/
 	@property inout(Row) front() pure inout
@@ -320,7 +320,7 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - back
-	
+
 	Gets the last row in whatever remains of the Range.
 	+/
 	@property inout(Row) back() pure inout
@@ -331,7 +331,7 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - popFront()
-	
+
 	+/
 	void popFront() pure
 	{
@@ -341,7 +341,7 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - popBack
-	
+
 	+/
 	void popBack() pure
 	{
@@ -351,7 +351,7 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - opIndex
-	
+
 	Gets the i'th row of whatever remains of the range
 	+/
 	Row opIndex(size_t i) pure
@@ -363,14 +363,14 @@ public:
 
 	/++
 	Make the ResultSet behave as a random access range - length
-	
+
 	+/
 	@property size_t length() pure const nothrow { return _curRows.length; }
 	alias opDollar = length; ///ditto
 
 	/++
 	Restore the range to its original span.
-	
+
 	Since the range is just a view of the data, we can easily revert to the
 	initial state.
 	+/
@@ -381,7 +381,7 @@ public:
 
 	/++
 	Get a row as an associative array by column name
-	
+
 	The row in question will be that which was the most recent subject of
 	front, back, or opIndex. If there have been no such references it will be front.
 	+/
