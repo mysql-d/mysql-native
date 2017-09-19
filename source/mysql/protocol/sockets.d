@@ -18,6 +18,7 @@ version(Have_vibe_d_core)
 alias PlainPhobosSocket = std.socket.TcpSocket;
 version(Have_vibe_d_core)
 {
+	static import vibe.core.net;
 	alias PlainVibeDSocket = vibe.core.net.TCPConnection;
 }
 else
