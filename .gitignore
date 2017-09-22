@@ -17,3 +17,6 @@
 
 # Executable file name when 'dub' is run on linux
 mysql-native
+
+# Ignore IntelliJ directory if using a Jetbrains IDE
+.idea/

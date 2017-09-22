@@ -1,6 +1,10 @@
 language: d
 sudo: false
 
+addons:
+  apt:
+    packages: [ libevent-dev ]
+
 before_script:
     - mysql -e 'SHOW VARIABLES LIKE "%version%";'
     - mysql -e 'CREATE DATABASE mysqln_testdb;'
@@ -9,77 +13,95 @@ before_script:
 install: ./travis-install-deps.sh
 script: ./run-tests
 
-matrix:
-    include:
-        - d: dmd
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.073.1
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.073.0
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.072.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.071.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.070.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.070.2
-          addons:
-            mariadb: '5.5'
-          env: DB=mariadb-5.5
-
-        - d: dmd-2.070.2
-          services:
-            - mysql
-          env: DB=mysql-default
-
-        - d: dmd-2.069.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.068.2
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-1.1.0
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-1.0.0
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-0.17.1
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-0.17.0
-          addons:
-            mariadb: '10.1'
-
-        - d: gdc
-          addons:
-            mariadb: '10.1'
-
-        - d: gdc-4.8.5
-          addons:
-            mariadb: '10.1'
-
-    #allow_failures:
-    #    - d: gdc
+jobs:
+  include:
+    - stage: Build and Test with dmd and mariadb 10.1 on Linux
+      d: dmd
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.075.1
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.074.1
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.073.2
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.072.2
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.071.2
+      addons:
+        mariadb: '10.1'
+    - stage: Build and Test with dmd and mariadb 10.1 on Mac
+      d: dmd
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.075.1
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.074.1
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.073.2
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.072.2
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: dmd-2.071.2
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - stage: Build and Test with ldc and mariadb 10.1 on Linux
+      d: ldc
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.4.0
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.3.0
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.2.0
+      addons:
+        mariadb: '10.1'
+    - stage: Build and Test with ldc and mariadb 10.1 on Mac
+      d: ldc
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.4.0
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.3.0
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: ldc-1.2.0
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - stage: Build and Test with gdc and mariadb 10.1 on Linux
+      d: gdc
+      addons:
+        mariadb: '10.1'
+    - d: gdc-4.8.5
+      addons:
+        mariadb: '10.1'
+    - stage: Build and Test with gdc and mariadb 10.1 on Mac
+      d: gdc
+      os: osx
+      addons:
+        mariadb: '10.1'
+    - d: gdc-4.8.5
+      os: osx
+      addons:
+        mariadb: '10.1'
