@@ -1,10 +1,6 @@
 language: d
 sudo: false
 
-addons:
-  apt:
-    packages: [ libevent-dev ]
-
 before_script:
     - mysql -e 'SHOW VARIABLES LIKE "%version%";'
     - mysql -e 'CREATE DATABASE mysqln_testdb;'
@@ -14,7 +10,7 @@ script: dub test -c unittest-vibe
 
 jobs:
   include:
-    - stage: Build and Test with dmd and mariadb 10.1 on Linux
+    - stage: Build and Test with dmd and mariadb 10.1 on Linux and Mac
       d: dmd
       addons:
         apt:
@@ -27,39 +23,52 @@ jobs:
         mariadb: '10.1'
     - d: dmd-2.074.1
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
     - d: dmd-2.073.2
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
     - d: dmd-2.072.2
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
     - d: dmd-2.071.2
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
-    - stage: Build and Test with dmd and mariadb 10.1 on Mac
-      d: dmd
+    - d: dmd
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.075.1
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.074.1
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.073.2
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.072.2
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.071.2
       os: osx
+      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - stage: Build and Test with ldc and mariadb 10.1 on Linux
