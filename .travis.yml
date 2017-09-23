@@ -1,6 +1,8 @@
 language: d
 sudo: false
 
+services: mysql
+
 before_script:
     - mysql -e 'SHOW VARIABLES LIKE "%version%";'
     - mysql -e 'CREATE DATABASE mysqln_testdb;'
@@ -10,102 +12,78 @@ script: dub test -c unittest-vibe
 
 jobs:
   include:
-    - stage: Build and Test with dmd and mariadb 10.1 on Linux and Mac
+    - stage: Build and Test with DMD on Linux and Mac
       d: dmd
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd-2.075.1
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd-2.074.1
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd-2.073.2
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd-2.072.2
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd-2.071.2
       addons:
         apt:
           packages: [ libevent-dev ]
-        mariadb: '10.1'
     - d: dmd
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: dmd-2.075.1
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: dmd-2.074.1
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: dmd-2.073.2
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: dmd-2.072.2
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: dmd-2.071.2
       os: osx
-      addons:
-        mariadb: '10.1'
-    - stage: Build and Test with ldc and mariadb 10.1 on Linux and Mac
+    - stage: Build and Test with LDC on Linux and Mac
       d: ldc
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: ldc-1.4.0
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: ldc-1.3.0
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: ldc-1.2.0
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: ldc
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: ldc-1.4.0
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: ldc-1.3.0
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: ldc-1.2.0
       os: osx
-      addons:
-        mariadb: '10.1'
-    - stage: Build and Test with gdc and mariadb 10.1 on Linux and Mac
+    - stage: Build and Test with GDC on Linux and Mac
       d: gdc
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: gdc-4.8.5
       addons:
-        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
     - d: gdc
       os: osx
-      addons:
-        mariadb: '10.1'
     - d: gdc-4.8.5
       os: osx
-      addons:
-        mariadb: '10.1'
