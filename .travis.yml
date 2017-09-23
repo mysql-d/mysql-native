@@ -43,35 +43,29 @@ jobs:
         mariadb: '10.1'
     - d: dmd
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.075.1
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.074.1
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.073.2
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.072.2
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
     - d: dmd-2.071.2
       os: osx
-      before_install: brew install libevent
       addons:
         mariadb: '10.1'
-    - stage: Build and Test with ldc and mariadb 10.1 on Linux
+    - stage: Build and Test with ldc and mariadb 10.1 on Linux and Mac
       d: ldc
       addons:
         mariadb: '10.1'
@@ -84,8 +78,7 @@ jobs:
     - d: ldc-1.2.0
       addons:
         mariadb: '10.1'
-    - stage: Build and Test with ldc and mariadb 10.1 on Mac
-      d: ldc
+    - d: ldc
       os: osx
       addons:
         mariadb: '10.1'
@@ -101,15 +94,14 @@ jobs:
       os: osx
       addons:
         mariadb: '10.1'
-    - stage: Build and Test with gdc and mariadb 10.1 on Linux
+    - stage: Build and Test with gdc and mariadb 10.1 on Linux and Mac
       d: gdc
       addons:
         mariadb: '10.1'
     - d: gdc-4.8.5
       addons:
         mariadb: '10.1'
-    - stage: Build and Test with gdc and mariadb 10.1 on Mac
-      d: gdc
+    - d: gdc
       os: osx
       addons:
         mariadb: '10.1'
