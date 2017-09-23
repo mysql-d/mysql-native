@@ -17,9 +17,13 @@ jobs:
     - stage: Build and Test with dmd and mariadb 10.1 on Linux
       d: dmd
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
     - d: dmd-2.075.1
       addons:
+        apt:
+          packages: [ libevent-dev ]
         mariadb: '10.1'
     - d: dmd-2.074.1
       addons:
