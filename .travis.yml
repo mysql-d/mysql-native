@@ -85,23 +85,16 @@ jobs:
     - d: ldc-1.2.0
       os: osx
       script: dub build
-    - stage: build with GDC on Linux and Mac
-      d: gdc
-      script: dub build
-      addons:
-        apt:
-          packages: [ libevent-dev ]
-    - d: gdc-4.8.5
-      script: dub build
-      addons:
-        apt:
-          packages: [ libevent-dev ]
-    - d: gdc
-      os: osx
-      script: dub build
-    - d: gdc-4.8.5
-      os: osx
-      script: dub build
+## Can't include GDC until std.experimental.allocator stuff has caught up
+#    - stage: build with GDC on Linux and Mac
+#      d: gdc
+#      script: dub build
+#      addons:
+#        apt:
+#          packages: [ libevent-dev ]
+#    - d: gdc
+#      os: osx
+#      script: dub build
     - stage: run tests with DMD on Linux
       d: dmd
       before_script:
