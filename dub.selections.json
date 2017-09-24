@@ -1,7 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"eventcore": "0.8.18",
+		"eventcore": "0.8.19",
 		"libasync": "0.8.3",
 		"libev": "5.0.0+4.04",
 		"libevent": "2.0.2+2.0.16",
