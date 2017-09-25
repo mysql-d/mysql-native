@@ -543,6 +543,7 @@ package:
 					vals[vcl++] = *ubp;
 					break;
 				case "std.datetime.date.Date":
+				case "std.datetime.Date":
 					types[ct++] = SQLType.DATE;
 					types[ct++] = SIGNED;
 					Date date = isRef? *(v.get!(Date*)): v.get!(Date);
@@ -553,6 +554,7 @@ package:
 					vcl += l;
 					break;
 				case "std.datetime.TimeOfDay":
+				case "std.datetime.Time":
 					types[ct++] = SQLType.TIME;
 					types[ct++] = SIGNED;
 					TimeOfDay time = isRef? *(v.get!(TimeOfDay*)): v.get!(TimeOfDay);
@@ -563,6 +565,7 @@ package:
 					vcl += l;
 					break;
 				case "std.datetime.date.DateTime":
+				case "std.datetime.DateTime":
 					types[ct++] = SQLType.DATETIME;
 					types[ct++] = SIGNED;
 					DateTime dt = isRef? *(v.get!(DateTime*)): v.get!(DateTime);
