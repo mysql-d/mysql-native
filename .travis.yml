@@ -1,85 +1,239 @@
 language: d
 sudo: false
 
-before_script:
-    - mysql -e 'SHOW VARIABLES LIKE "%version%";'
-    - mysql -e 'CREATE DATABASE mysqln_testdb;'
-    - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+script: dub build
 
-install: ./travis-install-deps.sh
-script: ./run-tests
-
-matrix:
-    include:
-        - d: dmd
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.073.1
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.073.0
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.072.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.071.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.070.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.070.2
-          addons:
-            mariadb: '5.5'
-          env: DB=mariadb-5.5
-
-        - d: dmd-2.070.2
-          services:
-            - mysql
-          env: DB=mysql-default
-
-        - d: dmd-2.069.2
-          addons:
-            mariadb: '10.1'
-
-        - d: dmd-2.068.2
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-1.1.0
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-1.0.0
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-0.17.1
-          addons:
-            mariadb: '10.1'
-
-        - d: ldc-0.17.0
-          addons:
-            mariadb: '10.1'
-
-        - d: gdc
-          addons:
-            mariadb: '10.1'
-
-        - d: gdc-4.8.5
-          addons:
-            mariadb: '10.1'
-
-    #allow_failures:
-    #    - d: gdc
+jobs:
+  include:
+    - stage: build with DMD on Linux and Mac
+      d: dmd
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.075.1
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.074.1
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.073.2
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.072.2
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.071.2
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.070.2
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd
+      os: osx
+    - d: dmd-2.075.1
+      os: osx
+    - d: dmd-2.074.1
+      os: osx
+    - d: dmd-2.073.2
+      os: osx
+    - d: dmd-2.072.2
+      os: osx
+    - d: dmd-2.071.2
+      os: osx
+    - d: dmd-2.070.2
+      os: osx
+    - stage: build with LDC on Linux and Mac
+      d: ldc
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.4.0
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.3.0
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.2.0
+      addons:
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc
+      os: osx
+    - d: ldc-1.4.0
+      os: osx
+    - d: ldc-1.3.0
+      os: osx
+    - d: ldc-1.2.0
+      os: osx
+## Can't include GDC until std.experimental.allocator stuff has caught up
+#    - stage: build with GDC on Linux and Mac
+#      d: gdc
+#      addons:
+#        apt:
+#          packages: [ libevent-dev ]
+#    - d: gdc
+#      os: osx
+    - stage: run tests with DMD on Linux
+      d: dmd
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.075.1
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.074.1
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.073.2
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.072.2
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.071.2
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd-2.070.2
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.4.0
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.3.0
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: ldc-1.2.0
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      env: DB=mariadb-5.5
+      addons:
+        mariadb: '10.1'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      addons:
+        mariadb: '5.5'
+        apt:
+          packages: [ libevent-dev ]
+    - d: dmd
+      before_script:
+          - mysql -e 'SHOW VARIABLES LIKE "%version%";'
+          - mysql -e 'CREATE DATABASE mysqln_testdb;'
+          - echo 'host=127.0.0.1;port=3306;user=root;pwd=;db=mysqln_testdb' > testConnectionStr.txt
+      install: ./travis-install-deps.sh
+      script: ./run-tests
+      services: mysql
+      env: DB=mysql-default
+      addons:
+        apt:
+          packages: [ libevent-dev ]

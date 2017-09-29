@@ -542,6 +542,7 @@ package:
 					vals[vcl++] = *ubp++;
 					vals[vcl++] = *ubp;
 					break;
+				case "std.datetime.date.Date":
 				case "std.datetime.Date":
 					types[ct++] = SQLType.DATE;
 					types[ct++] = SIGNED;
@@ -552,6 +553,7 @@ package:
 					vals[vcl..vcl+l] = da[];
 					vcl += l;
 					break;
+				case "std.datetime.TimeOfDay":
 				case "std.datetime.Time":
 					types[ct++] = SQLType.TIME;
 					types[ct++] = SIGNED;
@@ -562,6 +564,7 @@ package:
 					vals[vcl..vcl+l] = ta[];
 					vcl += l;
 					break;
+				case "std.datetime.date.DateTime":
 				case "std.datetime.DateTime":
 					types[ct++] = SQLType.DATETIME;
 					types[ct++] = SIGNED;
