@@ -7,7 +7,7 @@ This package attempts to provide composite objects and methods that will
 allow a wide range of common database operations, but be relatively easy to
 use. It has no dependecies on GPL header files or libraries, instead communicating
 directly with the server via the
-[published client/server protocol](LINK http://dev.mysql.com/doc/internals/en/client-server-protocol.html).
+[published client/server protocol](http://dev.mysql.com/doc/internals/en/client-server-protocol.html).
 
 [API Reference](http://semitwist.com/mysql-native)
 
