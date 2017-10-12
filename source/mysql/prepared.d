@@ -1092,6 +1092,9 @@ public:
 	
 	This method tells the server that it can dispose of the information it
 	holds about the current prepared statement.
+
+	This method can be called during a GC collection. Allocations should be
+	avoided if possible as it could crash the GC.
 	+/
 	void release()
 	{
@@ -1100,8 +1103,11 @@ public:
 
 		scope(failure) _conn.kill();
 
-		ubyte[] packet;
-		packet.length = 9;
+		if (_conn.closed())
+			return;
+
+		ubyte[9] packet_buf;
+		ubyte[] packet = packet_buf;
 		packet.setPacketHeader(0/*packet number*/);
 		_conn.bumpPacket();
 		packet[4] = CommandType.STMT_CLOSE;
