@@ -23,7 +23,6 @@ d:
   - ldc-1.2.0
   - ldc-1.1.1
   - gdc
-  - gdc-4.8.5
 
 addons:
   mariadb: '10.1'
@@ -60,6 +59,9 @@ matrix:
             apt:
               packages: [ libevent-dev ]
           env: DB=mysql-default
-
-    #allow_failures:
-    #    - d: gdc
+# dmd 2.074.1 and the ldc equivalent (v1.4.0) have a problem with std.typecons.Nullable
+# gdc will fail due to std.experimental.allocator
+    allow_failures:
+        - d: dmd-2.074.1
+        - d: ldc-1.4.0
+        - d: gdc
