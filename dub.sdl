@@ -34,7 +34,7 @@ configuration "unittest-vibe" {
 	targetName "mysqln-tests-vibe"
 	excludedSourceFiles "source/app.d"
 
-	dependency "vibe-d:core" version=">=0.7.32 <0.9.0-0" optional=false
+	dependency "vibe-d:core" version=">=0.8.1 <0.9.0-0" optional=false
 
 	mainSourceFile "source/mysql/package.d"
 	debugVersions "MYSQL_INTEGRATION_TESTS"
