@@ -1,13 +1,6 @@
 language: d
 sudo: false
 
-os:
-  - linux
-  - osx
-
-# use OSX 10.13 rather than default (10.11). see: https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
-osx_image: xcode9
-
 d:
   - dmd
   - dmd-2.077.1
@@ -72,27 +65,17 @@ matrix:
               packages: [ libevent-dev ]
           env: DB=mysql-default
 
-    exclude:
-        # No GDC binaries available on OSX
-        - d: gdc
+        # on Mac just test latest & oldest supported dmd and ldc
+        - d: dmd
           os: osx
-        - d: gdc-6.3.0
+          osx_image: xcode9 # use OSX 10.13
+
+        - d: ldc
           os: osx
-        - d: gdc-4.8.5
-          os: osx
-        
-        # Doesn't appear to be available on OSX
-        - d: ldc-0.17.5
+          osx_image: xcode9 # use OSX 10.13
+
+        - d: dmd-2.068.2
           os: osx
 
-    allow_failures:
-        # Doesn't appear to exist on travis: https://github.com/travis-ci/travis-ci/issues/8849
-        - d: gdc-6.3.0
-        
-        # Getting weird error with this configuration:
-        #   dyld: Library not loaded: /opt/local/lib/libconfig.9.dylib
-        #     Referenced from: /Users/travis/dlang/ldc-1.0.0/bin/ldmd2
-        #     Reason: image not found
-        # In any case, not mysql-native's fault, so allow it to fail.
-        - d: ldc-1.0.0
+        - d: ldc-0.17.0
           os: osx
