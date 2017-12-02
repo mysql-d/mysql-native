@@ -79,3 +79,7 @@ matrix:
 
         - d: ldc-0.17.0
           os: osx
+
+    allow_failures:
+        # Doesn't appear to exist on travis: https://github.com/travis-ci/travis-ci/issues/8849
+        - d: gdc-6.3.0
