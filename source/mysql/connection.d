@@ -1085,3 +1085,27 @@ public:
 	/// Gets the result header's field descriptions.
 	@property FieldDescription[] resultFieldDescriptions() pure { return _rsh.fieldDescriptions; }
 }
+
+// unittest for issue 154, when the socket is disconnected from the mysql server.
+// This simulates a disconnect by closing the socket underneath the Connection
+// object itself.
+debug(MYSQL_INTEGRATION_TESTS)
+unittest
+{
+	mixin(scopedCn);
+
+	cn.exec("DROP TABLE IF EXISTS `dropConnection`");
+	cn.exec("CREATE TABLE `dropConnection` (
+		`val` INTEGER
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+	cn.exec("INSERT INTO `dropConnection` VALUES (1), (2), (3)");
+	import mysql.prepared;
+	{
+		auto prep = cn.prepare("SELECT * FROM `dropConnection`");
+		prep.query();
+	}
+	// close the socket forcibly
+	cn._socket.close();
+	// this should still work (it should reconnect).
+	cn.exec("DROP TABLE `dropConnection`");
+}
