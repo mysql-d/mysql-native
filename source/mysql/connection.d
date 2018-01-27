@@ -468,6 +468,10 @@ package:
 		if(_socket.connected)
 			_socket.close();
 		_open = OpenState.notConnected;
+		// any pending data is gone. Any statements to release will be released
+		// on the server automatically.
+		_headersPending = _rowsPending = _binaryPending = false;
+		statementsToRelease.clear();
 	}
 	
 	/// Called whenever mysql-native needs to send a command to the server
@@ -484,10 +488,19 @@ package:
 			
 		isAutoPurging = true;
 		scope(exit) isAutoPurging = false;
-		scope(failure) kill();
 
-		purgeResult();
-		statementsToRelease.releaseAll();
+		try
+		{
+			purgeResult();
+			statementsToRelease.releaseAll();
+		}
+		catch(Exception e)
+		{
+			// likely the connection was closed, so reset any state.
+			// Don't treat this as a real error, because everything will be reset when we
+			// reconnect.
+			kill();
+		}
 	}
 
 	/++
@@ -527,8 +540,17 @@ package:
 			if(id != 0)
 				doRelease(conn, id);
 
-			ids.length = 0;
-			assumeSafeAppend(ids);
+			clear();
+		}
+
+		// clear all statements, and reset for using again.
+		private void clear()
+		{
+			if(ids.length)
+			{
+				ids.length = 0;
+				assumeSafeAppend(ids);
+			}
 		}
 	}
 	StatementsToRelease!(PreparedImpl.immediateRelease) statementsToRelease;
