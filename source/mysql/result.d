@@ -308,7 +308,7 @@ package:
 
 public:
 	/++
-	Check whether the range can still we used, or has been invalidated.
+	Check whether the range can still be used, or has been invalidated.
 
 	A `ResultRange` becomes invalidated (and thus cannot be used) when the server
 	is sent another command on the same connection. When an invalidated `ResultRange`
