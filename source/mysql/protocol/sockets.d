@@ -55,8 +55,8 @@ class MySQLSocketPhobos : MySQLSocket
 	/// The socket should already be open
 	this(PlainPhobosSocket socket)
 	{
-		enforceEx!MYX(socket, "Tried to use a null Phobos socket - Maybe the 'openSocket' callback returned null?");
-		enforceEx!MYX(socket.isAlive, "Tried to use a closed Phobos socket - Maybe the 'openSocket' callback created a socket but forgot to open it?");
+		enforce!MYX(socket, "Tried to use a null Phobos socket - Maybe the 'openSocket' callback returned null?");
+		enforce!MYX(socket.isAlive, "Tried to use a closed Phobos socket - Maybe the 'openSocket' callback created a socket but forgot to open it?");
 		this.socket = socket;
 	}
 
@@ -86,8 +86,8 @@ class MySQLSocketPhobos : MySQLSocket
 
 		for (size_t off, len; off < dst.length; off += len) {
 			len = socket.receive(dst[off..$]);
-			enforceEx!MYX(len != 0, "Server closed the connection");
-			enforceEx!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
+			enforce!MYX(len != 0, "Server closed the connection");
+			enforce!MYX(len != socket.ERROR, "Received std.socket.Socket.ERROR");
 		}
 	}
 
@@ -111,8 +111,8 @@ version(Have_vibe_d_core) {
 		/// The socket should already be open
 		this(PlainVibeDSocket socket)
 		{
-			enforceEx!MYX(socket, "Tried to use a null Vibe.d socket - Maybe the 'openSocket' callback returned null?");
-			enforceEx!MYX(socket.connected, "Tried to use a closed Vibe.d socket - Maybe the 'openSocket' callback created a socket but forgot to open it?");
+			enforce!MYX(socket, "Tried to use a null Vibe.d socket - Maybe the 'openSocket' callback returned null?");
+			enforce!MYX(socket.connected, "Tried to use a closed Vibe.d socket - Maybe the 'openSocket' callback created a socket but forgot to open it?");
 			this.socket = socket;
 		}
 

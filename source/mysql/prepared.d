@@ -223,7 +223,7 @@ public:
 		// in the variant array, or provided explicitly. This sucks, but short of
 		// having a client side SQL parser I don't see what can be done.
 
-		enforceEx!MYX(index < _numParams, "Parameter index out of range.");
+		enforce!MYX(index < _numParams, "Parameter index out of range.");
 
 		_inParams[index] = val;
 		psn.pIndex = index;
@@ -299,7 +299,7 @@ public:
 	void setArgs(T...)(T args)
 		if(T.length == 0 || !is(T[0] == Variant[]))
 	{
-		enforceEx!MYX(args.length == _numParams, "Argument list supplied does not match the number of parameters.");
+		enforce!MYX(args.length == _numParams, "Argument list supplied does not match the number of parameters.");
 
 		foreach (size_t i, arg; args)
 			setArg(i, arg);
@@ -337,7 +337,7 @@ public:
 	+/
 	void setArgs(Variant[] args, ParameterSpecialization[] psnList=null)
 	{
-		enforceEx!MYX(args.length == _numParams, "Param count supplied does not match prepared statement");
+		enforce!MYX(args.length == _numParams, "Param count supplied does not match prepared statement");
 		_inParams[] = args[];
 		if (psnList !is null)
 		{
@@ -355,7 +355,7 @@ public:
 	+/
 	Variant getArg(size_t index)
 	{
-		enforceEx!MYX(index < _numParams, "Parameter index out of range.");
+		enforce!MYX(index < _numParams, "Parameter index out of range.");
 		return _inParams[index];
 	}
 

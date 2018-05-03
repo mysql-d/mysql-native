@@ -42,12 +42,12 @@ struct OKErrorPacket
 			packet.popFront(); // skip marker/field code
 			error = true;
 
-			enforceEx!MYXProtocol(packet.length > 2, "Malformed Error packet - Missing error code");
+			enforce!MYXProtocol(packet.length > 2, "Malformed Error packet - Missing error code");
 			serverStatus = packet.consume!short(); // error code into server state
 			if (packet.front == cast(ubyte) '#') //4.1+ error packet
 			{
 				packet.popFront(); // skip 4.1 marker
-				enforceEx!MYXProtocol(packet.length > 5, "Malformed Error packet - Missing SQL state");
+				enforce!MYXProtocol(packet.length > 5, "Malformed Error packet - Missing SQL state");
 				sqlState[] = (cast(char[])packet[0 .. 5])[];
 				packet = packet[5..$];
 			}
@@ -56,23 +56,23 @@ struct OKErrorPacket
 		{
 			packet.popFront(); // skip marker/field code
 
-			enforceEx!MYXProtocol(packet.length > 1, "Malformed OK packet - Missing affected rows");
+			enforce!MYXProtocol(packet.length > 1, "Malformed OK packet - Missing affected rows");
 			auto lcb = packet.consumeIfComplete!LCB();
 			assert(!lcb.isNull);
 			assert(!lcb.isIncomplete);
 			affected = lcb.value;
 
-			enforceEx!MYXProtocol(packet.length > 1, "Malformed OK packet - Missing insert id");
+			enforce!MYXProtocol(packet.length > 1, "Malformed OK packet - Missing insert id");
 			lcb = packet.consumeIfComplete!LCB();
 			assert(!lcb.isNull);
 			assert(!lcb.isIncomplete);
 			insertID = lcb.value;
 
-			enforceEx!MYXProtocol(packet.length > 2,
+			enforce!MYXProtocol(packet.length > 2,
 					format("Malformed OK packet - Missing server status. Expected length > 2, got %d", packet.length));
 			serverStatus = packet.consume!short();
 
-			enforceEx!MYXProtocol(packet.length >= 2, "Malformed OK packet - Missing warnings");
+			enforce!MYXProtocol(packet.length >= 2, "Malformed OK packet - Missing warnings");
 			warnings = packet.consume!short();
 		}
 		else
@@ -133,7 +133,7 @@ public:
 		_name           = packet.consume!LCS();
 		_originalName   = packet.consume!LCS();
 
-		enforceEx!MYXProtocol(packet.length >= 13, "Malformed field specification packet");
+		enforce!MYXProtocol(packet.length >= 13, "Malformed field specification packet");
 		packet.popFront(); // one byte filler here
 		_charSet    = packet.consume!short();
 		_length     = packet.consume!int();
@@ -335,14 +335,14 @@ public:
 		foreach (size_t i; 0 .. fieldCount)
 		{
 			auto packet = con.getPacket();
-			enforceEx!MYXProtocol(!packet.isEOFPacket(),
+			enforce!MYXProtocol(!packet.isEOFPacket(),
 					"Expected field description packet, got EOF packet in result header sequence");
 
 			_fieldDescriptions[i]   = FieldDescription(packet);
 			_fieldNames[i]          = _fieldDescriptions[i]._name;
 		}
 		auto packet = con.getPacket();
-		enforceEx!MYXProtocol(packet.isEOFPacket(),
+		enforce!MYXProtocol(packet.isEOFPacket(),
 				"Expected EOF packet in result header sequence");
 		auto eof = EOFPacket(packet);
 		con._serverStatus = eof._serverStatus;
@@ -367,7 +367,7 @@ public:
 	{
 		foreach(CSN csn; csa)
 		{
-			enforceEx!MYX(csn.cIndex < fieldCount && _fieldDescriptions[csn.cIndex].type == csn.type,
+			enforce!MYX(csn.cIndex < fieldCount && _fieldDescriptions[csn.cIndex].type == csn.type,
 					"Column specialization index or type does not match the corresponding column.");
 			_fieldDescriptions[csn.cIndex].chunkSize = csn.chunkSize;
 			_fieldDescriptions[csn.cIndex].chunkDelegate = csn.chunkDelegate;
@@ -439,13 +439,13 @@ public:
 			_con.getPacket();  // just eat them - they are not useful
 
 		if (_paramCount)
-			enforceEx!MYXProtocol(getEOFPacket(), "Expected EOF packet in result header sequence");
+			enforce!MYXProtocol(getEOFPacket(), "Expected EOF packet in result header sequence");
 
 		foreach(size_t i; 0.._colCount)
 		   _colDescriptions[i] = FieldDescription(_con.getPacket());
 
 		if (_colCount)
-			enforceEx!MYXProtocol(getEOFPacket(), "Expected EOF packet in result header sequence");
+			enforce!MYXProtocol(getEOFPacket(), "Expected EOF packet in result header sequence");
 	}
 
 	ParamDescription param(size_t i) pure const nothrow { return _paramDescriptions[i]; }

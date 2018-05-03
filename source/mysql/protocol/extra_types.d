@@ -18,15 +18,15 @@ struct SQLValue
 	// empty template as a template and non-template won't be added to the same overload set
 	@property inout(Variant) value()() inout
 	{
-		enforceEx!MYX(!isNull, "SQL value is null");
-		enforceEx!MYX(!isIncomplete, "SQL value not complete");
+		enforce!MYX(!isNull, "SQL value is null");
+		enforce!MYX(!isIncomplete, "SQL value not complete");
 		return _value;
 	}
 
 	@property void value(T)(T value)
 	{
-		enforceEx!MYX(!isNull, "SQL value is null");
-		enforceEx!MYX(!isIncomplete, "SQL value not complete");
+		enforce!MYX(!isNull, "SQL value is null");
+		enforce!MYX(!isIncomplete, "SQL value not complete");
 		_value = value;
 	}
 

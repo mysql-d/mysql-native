@@ -619,7 +619,7 @@ public:
 	this(MySQLSocketType socketType, string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
 	{
 		version(Have_vibe_d_core) {} else
-			enforceEx!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_d_core");
+			enforce!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_d_core");
 
 		this(socketType, &defaultOpenSocketPhobos, &defaultOpenSocketVibeD,
 			host, user, pwd, db, port, capFlags);
@@ -654,10 +654,10 @@ public:
 	}
 	body
 	{
-		enforceEx!MYX(capFlags & SvrCapFlags.PROTOCOL41, "This client only supports protocol v4.1");
-		enforceEx!MYX(capFlags & SvrCapFlags.SECURE_CONNECTION, "This client only supports protocol v4.1 connection");
+		enforce!MYX(capFlags & SvrCapFlags.PROTOCOL41, "This client only supports protocol v4.1");
+		enforce!MYX(capFlags & SvrCapFlags.SECURE_CONNECTION, "This client only supports protocol v4.1 connection");
 		version(Have_vibe_d_core) {} else
-			enforceEx!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_d_core");
+			enforce!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_d_core");
 
 		_socketType = socketType;
 		_host = host;
@@ -877,7 +877,7 @@ public:
 		foreach (s; a)
 		{
 			string[] a2 = split(s, "=");
-			enforceEx!MYX(a2.length == 2, "Bad connection string: " ~ cs);
+			enforce!MYX(a2.length == 2, "Bad connection string: " ~ cs);
 			string name = strip(a2[0]);
 			string val = strip(a2[1]);
 			switch (name)

@@ -85,7 +85,7 @@ private:
 
 	MySQLProcedure[] stored(bool procs)
 	{
-		enforceEx!MYX(_con.currentDB.length, "There is no selected database");
+		enforce!MYX(_con.currentDB.length, "There is no selected database");
 		string query = procs ? "SHOW PROCEDURE STATUS WHERE db='": "SHOW FUNCTION STATUS WHERE db='";
 		query ~= _con.currentDB ~ "'";
 

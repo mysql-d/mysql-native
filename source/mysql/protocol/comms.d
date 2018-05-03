@@ -578,7 +578,7 @@ package(mysql) void immediateReleasePrepared(Connection conn, uint statementId)
 package(mysql) bool[] consumeNullBitmap(ref ubyte[] packet, uint fieldCount) pure
 {
 	uint bitmapLength = calcBitmapLength(fieldCount);
-	enforceEx!MYXProtocol(packet.length >= bitmapLength, "Packet too small to hold null bitmap for all fields");
+	enforce!MYXProtocol(packet.length >= bitmapLength, "Packet too small to hold null bitmap for all fields");
 	auto bitmap = packet.consume(bitmapLength);
 	return decodeNullBitmap(bitmap, fieldCount);
 }
@@ -652,7 +652,7 @@ body
 	{
 		// There's a null byte header on a binary result sequence, followed by some bytes of bitmap
 		// indicating which columns are null
-		enforceEx!MYXProtocol(packet.front == 0, "Expected null header byte for binary result row");
+		enforce!MYXProtocol(packet.front == 0, "Expected null header byte for binary result row");
 		packet.popFront();
 		_nulls = consumeNullBitmap(packet, fieldCount);
 	}
@@ -700,7 +700,7 @@ package(mysql) ubyte[] getPacket(Connection conn)
 	conn._socket.read(header);
 	// number of bytes always set as 24-bit
 	uint numDataBytes = (header[2] << 16) + (header[1] << 8) + header[0];
-	enforceEx!MYXProtocol(header[3] == conn.pktNumber, "Server packet out of order");
+	enforce!MYXProtocol(header[3] == conn.pktNumber, "Server packet out of order");
 	conn.bumpPacket();
 
 	ubyte[] packet = new ubyte[numDataBytes];
@@ -897,8 +897,8 @@ package(mysql) void consumeServerInfo(Connection conn, ref ubyte[] packet)
 	conn._sCaps += cast(SvrCapFlags)(packet.consume!ushort() << 16); // server_capabilities (upper bytes)
 	conn._sCaps |= SvrCapFlags.OLD_LONG_PASSWORD; // Assumed to be set since v4.1.1, according to spec
 
-	enforceEx!MYX(conn._sCaps & SvrCapFlags.PROTOCOL41, "Server doesn't support protocol v4.1");
-	enforceEx!MYX(conn._sCaps & SvrCapFlags.SECURE_CONNECTION, "Server doesn't support protocol v4.1 connection");
+	enforce!MYX(conn._sCaps & SvrCapFlags.PROTOCOL41, "Server doesn't support protocol v4.1");
+	enforce!MYX(conn._sCaps & SvrCapFlags.SECURE_CONNECTION, "Server doesn't support protocol v4.1 connection");
 }
 
 package(mysql) ubyte[] parseGreeting(Connection conn)
@@ -910,7 +910,7 @@ package(mysql) ubyte[] parseGreeting(Connection conn)
 	if (packet.length > 0 && packet[0] == ResultPacketMarker.error)
 	{
 		auto okp = OKErrorPacket(packet);
-		enforceEx!MYX(!okp.error, "Connection failure: " ~ cast(string) okp.message);
+		enforce!MYX(!okp.error, "Connection failure: " ~ cast(string) okp.message);
 	}
 
 	conn._protocol = packet.consume!ubyte();
@@ -925,7 +925,7 @@ package(mysql) ubyte[] parseGreeting(Connection conn)
 	authBuf.length = 255;
 	authBuf[0..8] = packet.consume(8)[]; // scramble_buff
 
-	enforceEx!MYXProtocol(packet.consume!ubyte() == 0, "filler should always be 0");
+	enforce!MYXProtocol(packet.consume!ubyte() == 0, "filler should always be 0");
 
 	conn.consumeServerInfo(packet);
 
@@ -934,11 +934,11 @@ package(mysql) ubyte[] parseGreeting(Connection conn)
 
 	// rest of the scramble
 	auto len = packet.countUntil(0);
-	enforceEx!MYXProtocol(len >= 12, "second part of scramble buffer should be at least 12 bytes");
+	enforce!MYXProtocol(len >= 12, "second part of scramble buffer should be at least 12 bytes");
 	enforce(authBuf.length > 8+len);
 	authBuf[8..8+len] = packet.consume(len)[];
 	authBuf.length = 8+len; // cut to correct size
-	enforceEx!MYXProtocol(packet.consume!ubyte() == 0, "Excepted \\0 terminating scramble buf");
+	enforce!MYXProtocol(packet.consume!ubyte() == 0, "Excepted \\0 terminating scramble buf");
 
 	return authBuf;
 }
@@ -987,7 +987,7 @@ body
 
 	auto packet = conn.getPacket();
 	auto okp = OKErrorPacket(packet);
-	enforceEx!MYX(!okp.error, "Authentication failure: " ~ cast(string) okp.message);
+	enforce!MYX(!okp.error, "Authentication failure: " ~ cast(string) okp.message);
 	conn._open = Connection.OpenState.authenticated;
 }
 
@@ -1057,7 +1057,7 @@ package(mysql) ulong purgeResult(Connection conn)
 				conn._headersPending = false;
 				break;
 			}
-			enforceEx!MYXProtocol(i < conn._fieldCount,
+			enforce!MYXProtocol(i < conn._fieldCount,
 				text("Field header count (", conn._fieldCount, ") exceeded but no EOF packet found."));
 		}
 	}
@@ -1109,5 +1109,5 @@ package(mysql) void enableMultiStatements(Connection conn, bool on)
 
 	// For some reason this command gets an EOF packet as response
 	auto packet = conn.getPacket();
-	enforceEx!MYXProtocol(packet[0] == 254 && packet.length == 5, "Unexpected response to SET_OPTION command");
+	enforce!MYXProtocol(packet[0] == 254 && packet.length == 5, "Unexpected response to SET_OPTION command");
 }

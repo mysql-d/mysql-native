@@ -67,8 +67,8 @@ public:
 	+/
 	inout(Variant) opIndex(size_t i) inout
 	{
-		enforceEx!MYX(_nulls.length > 0, format("Cannot get column index %d. There are no columns", i));
-		enforceEx!MYX(i < _nulls.length, format("Cannot get column index %d. The last available index is %d", i, _nulls.length-1));
+		enforce!MYX(_nulls.length > 0, format("Cannot get column index %d. There are no columns", i));
+		enforce!MYX(i < _nulls.length, format("Cannot get column index %d. The last available index is %d", i, _nulls.length-1));
 		return _values[i];
 	}
 
@@ -111,7 +111,7 @@ public:
 			{
 				if(!_nulls[i])
 				{
-					enforceEx!MYX(_values[i].convertsTo!(typeof(s.tupleof[i].get))(),
+					enforce!MYX(_values[i].convertsTo!(typeof(s.tupleof[i].get))(),
 						"At col "~to!string(i)~" the value is not implicitly convertible to the structure type");
 					s.tupleof[i] = _values[i].get!(typeof(s.tupleof[i].get));
 				}
@@ -122,7 +122,7 @@ public:
 			{
 				if(!_nulls[i])
 				{
-					enforceEx!MYX(_values[i].convertsTo!(typeof(s.tupleof[i]))(),
+					enforce!MYX(_values[i].convertsTo!(typeof(s.tupleof[i]))(),
 						"At col "~to!string(i)~" the value is not implicitly convertible to the structure type");
 					s.tupleof[i] = _values[i].get!(typeof(s.tupleof[i]));
 				}
@@ -185,7 +185,7 @@ private:
 
 	void ensureValid() const pure
 	{
-		enforceEx!MYXInvalidatedRange(isValid,
+		enforce!MYXInvalidatedRange(isValid,
 			"This ResultRange has been invalidated and can no longer be used.");
 	}
 
@@ -230,7 +230,7 @@ public:
 	@property inout(Row) front() pure inout
 	{
 		ensureValid();
-		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
+		enforce!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
 		return _row;
 	}
 
@@ -240,7 +240,7 @@ public:
 	void popFront()
 	{
 		ensureValid();
-		enforceEx!MYX(!empty, "Attempted 'popFront' when no more rows available");
+		enforce!MYX(!empty, "Attempted 'popFront' when no more rows available");
 		_row = _con.getNextRow();
 		_numRowsFetched++;
 	}
@@ -253,7 +253,7 @@ public:
 	Variant[string] asAA()
 	{
 		ensureValid();
-		enforceEx!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
+		enforce!MYX(!empty, "Attempted 'front' on exhausted result sequence.");
 		Variant[string] aa;
 		foreach (size_t i, string s; _colNames)
 			aa[s] = _row._values[i];
