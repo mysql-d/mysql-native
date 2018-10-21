@@ -35,6 +35,7 @@ package:
 	Variant[]   _values; // Temporarily "package" instead of "private"
 private:
 	bool[]      _nulls;
+	string[]    _names;
 
 public:
 
@@ -51,7 +52,7 @@ public:
 	+/
 	this(Connection con, ref ubyte[] packet, ResultSetHeaders rh, bool binary)
 	{
-		ctorRow(con, packet, rh, binary, _values, _nulls);
+		ctorRow(con, packet, rh, binary, _values, _nulls, _names);
 	}
 
 	/++
@@ -70,6 +71,14 @@ public:
 		enforce!MYX(_nulls.length > 0, format("Cannot get column index %d. There are no columns", i));
 		enforce!MYX(i < _nulls.length, format("Cannot get column index %d. The last available index is %d", i, _nulls.length-1));
 		return _values[i];
+	}
+
+	/++
+	Get the name of the column with specified index.
+	+/
+	inout(string) getName(size_t index) inout
+	{
+		return _names[index];
 	}
 
 	/++

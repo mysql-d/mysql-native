@@ -636,7 +636,7 @@ body
 
 // Moved here from `struct Row.this`
 package(mysql) void ctorRow(Connection conn, ref ubyte[] packet, ResultSetHeaders rh, bool binary,
-	out Variant[] _values, out bool[] _nulls)
+	out Variant[] _values, out bool[] _nulls, out string[] _names)
 in
 {
 	assert(rh.fieldCount <= uint.max);
@@ -646,7 +646,7 @@ body
 	scope(failure) conn.kill();
 
 	uint fieldCount = cast(uint)rh.fieldCount;
-	_values.length = _nulls.length = fieldCount;
+	_values.length = _nulls.length = _names.length = fieldCount;
 
 	if(binary)
 	{
@@ -669,6 +669,7 @@ body
 		do
 		{
 			FieldDescription fd = rh[i];
+			_names[i] = fd.name;
 			sqlValue = packet.consumeIfComplete(fd.type, binary, fd.unsigned, fd.charSet);
 			// TODO: Support chunk delegate
 			if(sqlValue.isIncomplete)
