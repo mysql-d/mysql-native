@@ -10,7 +10,7 @@ sourcePaths "source/"
 importPaths "source/"
 
 // Needed on OSX with DMD 2.079+: https://github.com/vibe-d/vibe.d/issues/2155
-// subConfiguration "vibe-d:core" "libevent" platform="osx"
+subConfiguration "vibe-d:core" "libevent" platform="osx"
 
 configuration "application" {
 	targetType "executable"
