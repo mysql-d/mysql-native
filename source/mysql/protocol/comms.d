@@ -415,7 +415,7 @@ package struct ProtocolPrepared
 	static void sendLongData(MySQLSocket socket, uint hStmt, ParameterSpecialization[] psa)
 	{
 		assert(psa.length <= ushort.max); // parameter number is sent as short
-		foreach (ushort i, PSN psn; psa)
+		foreach (size_t i, PSN psn; psa)
 		{
 			if (!psn.chunkSize) continue;
 			uint cs = psn.chunkSize;
@@ -426,7 +426,7 @@ package struct ProtocolPrepared
 			chunk.setPacketHeader(0 /*each chunk is separate cmd*/);
 			chunk[4] = CommandType.STMT_SEND_LONG_DATA;
 			hStmt.packInto(chunk[5..9]); // statement handle
-			packInto(i, chunk[9..11]); // parameter number
+			packInto(cast(ushort)i, chunk[9..11]); // parameter number
 
 			// byte 11 on is payload
 			for (;;)
