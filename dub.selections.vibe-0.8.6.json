@@ -1,0 +1,12 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"libasync": "0.8.4",
+		"libev": "5.0.0+4.04",
+		"libevent": "2.0.2+2.0.16",
+		"memutils": "0.4.13",
+		"openssl": "1.1.4+1.0.1g",
+		"unit-threaded": "0.7.55",
+		"vibe-d": "0.8.6"
+	}
+}

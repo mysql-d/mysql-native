@@ -38,8 +38,12 @@ void main()
 	}
 
 	// If an alternate dub.selections.json was requested, use it.
-	copyIfExists("dub.selections."~envGet("DUB_SELECT")~".json", "dub.selections.json");
-	copyIfExists("examples/homePage/dub.selections."~envGet("DUB_SELECT")~".json", "examples/homePage/dub.selections.json");
+	if(environment.get("DUB_SELECT") != null) {
+		string dubSelections = "dub.selections."~envGet("DUB_SELECT")~".json";
+		writefln("Using alternative dub dependencies file: %s", dubSelections);
+		copyIfExists(dubSelections, "dub.selections.json");
+		copyIfExists("examples/homePage/dub.selections."~envGet("DUB_SELECT")~".json", "examples/homePage/dub.selections.json");
+	}
 
 	if(envBool("DUB_UPGRADE"))
 	{
