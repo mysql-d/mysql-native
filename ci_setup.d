@@ -1,5 +1,6 @@
 import std.file;
 import std.process;
+import std.stdio : writefln;
 
 bool envBool(string name)
 {
@@ -22,8 +23,10 @@ void main()
 	auto haveRdmd = executeShell("rdmd --help").status == 0;
 	if(!haveRdmd)
 	{
-		auto dmdZip = "dmd.2.076.0."~environment["TRAVIS_OS_NAME"]~".zip";
-		spawnShell("wget http://downloads.dlang.org/releases/2017/"~dmdZip).wait;
+		auto dmdVersion = "2.088.0";
+		auto dmdZip = "dmd."~dmdVersion~"."~environment["TRAVIS_OS_NAME"]~".zip";
+		writefln("Downloading %s from downloads.dlang.org", dmdZip);
+		spawnShell("wget http://downloads.dlang.org/releases/2.x/"~dmdVersion~"/"~dmdZip).wait;
 		spawnShell("unzip -q -d local-dmd "~dmdZip).wait;
 	}
 

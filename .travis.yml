@@ -1,9 +1,12 @@
 language: d
-sudo: false
+
+# seems the default 'xenial' isn't working well with mariadb (at some point we need to update to bionic)
+dist: precise
 
 addons:
   mariadb: '10.1'
   apt:
+    update: true
     packages: [ libevent-dev ]
 
 install: $DMD -ofci_setup ci_setup.d && ./ci_setup
@@ -11,10 +14,22 @@ script: ./run_tests --mode=combined
 
 matrix:
   include:
+    - d: dmd
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: dmd-2.086.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: dmd-2.085.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: dmd-2.084.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: dmd-2.083.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: dmd-2.082.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
     - d: dmd-2.080.0
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
     - d: dmd-2.079.1
-      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.3
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
     - d: dmd-2.078.3
       env: USE_UNIT_THREADED=true
     - d: dmd-2.077.1
@@ -28,8 +43,22 @@ matrix:
     - d: dmd-2.070.2
     - d: dmd-2.069.2
     - d: dmd-2.068.2
+    - d: ldc
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.17.0 # eq to dmd v2.087
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.16.0 # eq to dmd v2.086.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.15.0 # eq to dmd v2.085.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.14.0 # eq to dmd v2.084.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.13.0 # eq to dmd v2.083.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
+    - d: ldc-1.12.0 # eq to dmd v2.082.1
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
     - d: ldc-1.9.0
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
     - d: ldc-1.8.0
       env: USE_UNIT_THREADED=true
     - d: ldc-1.7.0
@@ -42,71 +71,55 @@ matrix:
     - d: ldc-1.2.0
     - d: ldc-1.1.1
     - d: ldc-1.0.0
-    - d: ldc-0.17.5
-    - d: ldc-0.17.1
-    - d: ldc-0.17.0
     - d: gdc-6.3.0
     - d: gdc-4.8.5
     - d: dmd-beta
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
 
-    # Test alternative db versions, but only on one compiler version
-    - d: dmd-2.078.3
+    # Test alternative db versions, but only on latest compiler version
+    - d: dmd
       services:
         - mysql
       addons: # Remove "mariadb: ..." from default addons, but keep "libevent-dev"
         apt:
           packages: [ libevent-dev ]
-      env: DB=mysql-default USE_UNIT_THREADED=true
+      env: DB=mysql-default USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
 
-    - d: dmd-2.078.3
+    - d: dmd
       addons:
         mariadb: '5.5'
         apt:
           packages: [ libevent-dev ]
-      env: DB=mariadb-5.5 USE_UNIT_THREADED=true
+      env: DB=mariadb-5.5 USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
 
-    - d: dmd-2.078.3
+    - d: dmd
       addons:
         mariadb: '10.0'
         apt:
           packages: [ libevent-dev ]
-      env: DB=mariadb-10.0 USE_UNIT_THREADED=true
+      env: DB=mariadb-10.0 USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
 
-    - d: dmd-2.078.3
+    - d: dmd
       addons:
         mariadb: '10.2'
         apt:
           packages: [ libevent-dev ]
-      env: DB=mariadb-10.2 USE_UNIT_THREADED=true
+      env: DB=mariadb-10.2 USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
 
-    - d: dmd-2.078.3
+    - d: dmd
       addons:
         mariadb: '10.3'
         apt:
           packages: [ libevent-dev ]
-      env: DB=mariadb-10.3 USE_UNIT_THREADED=true
+      env: DB=mariadb-10.3 USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
 
     # on Mac just test latest & oldest supported dmd and ldc
-    - d: dmd-2.080.0
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
+    - d: dmd
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
       os: osx
       osx_image: xcode9 # use OSX 10.13
 
-    - d: dmd-2.079.1
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: dmd-2.078.3
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: ldc-1.9.0
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: ldc-1.8.0
+    - d: ldc
       os: osx
       osx_image: xcode9 # use OSX 10.13
 
@@ -118,10 +131,10 @@ matrix:
 
     # Test with all dependencies updated
     # (dub.selections.json is deliberately kept old)
-    - d: dmd-2.080.0
+    - d: dmd
       services:
         - mysql
-      env: DUB_UPGRADE=true DB=mysql-default
+      env: USE_UNIT_THREADED=true DUB_UPGRADE=true DB=mysql-default
 
   allow_failures:
     # Doesn't appear to exist on travis: https://github.com/travis-ci/travis-ci/issues/8849
@@ -133,25 +146,12 @@ matrix:
     # These are currently failing because mysql-native does not yet
     # support MySQL v8.0.4's new default authentication mechanism: caching_sha2_password
     # See issue #189: https://github.com/mysql-d/mysql-native/issues/189
-    - d: dmd-2.080.0
+    - d: dmd
       env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
       os: osx
       osx_image: xcode9 # use OSX 10.13
 
-    - d: dmd-2.079.1
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: dmd-2.078.3
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: ldc-1.9.0
-      os: osx
-      osx_image: xcode9 # use OSX 10.13
-
-    - d: ldc-1.8.0
+    - d: ldc
       os: osx
       osx_image: xcode9 # use OSX 10.13
 
