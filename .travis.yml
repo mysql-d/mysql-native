@@ -8,6 +8,8 @@ addons:
   apt:
     update: true
     packages: [ libevent-dev ]
+  homebrew:
+    brewfile: true
 
 install: $DMD -ofci_setup ci_setup.d && ./ci_setup
 script: ./run_tests --mode=combined
@@ -117,11 +119,12 @@ matrix:
     - d: dmd
       env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
       os: osx
-      osx_image: xcode9 # use OSX 10.13
+      osx_image: xcode11 # use OSX 10.14
 
     - d: ldc
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
       os: osx
-      osx_image: xcode9 # use OSX 10.13
+      osx_image: xcode11 # use OSX 10.14
 
     - d: dmd-2.068.2
       os: osx
@@ -142,18 +145,20 @@ matrix:
 
     # Occasional failures are expected here
     - d: dmd-beta
+      env: USE_UNIT_THREADED=true DUB_UPGRADE=true DB=mysql-default
 
     # These are currently failing because mysql-native does not yet
     # support MySQL v8.0.4's new default authentication mechanism: caching_sha2_password
     # See issue #189: https://github.com/mysql-d/mysql-native/issues/189
     - d: dmd
-      env: DUB_SELECT=vibe-0.8.3 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6 # DMDFE 2.079+ doesn't support vibe.d v0.7.32
       os: osx
-      osx_image: xcode9 # use OSX 10.13
+      osx_image: xcode11 # use OSX 10.14
 
     - d: ldc
+      env: USE_UNIT_THREADED=true DUB_SELECT=vibe-0.8.6
       os: osx
-      osx_image: xcode9 # use OSX 10.13
+      osx_image: xcode11 # use OSX 10.14
 
     - d: dmd-2.068.2
       os: osx
