@@ -358,7 +358,7 @@ version(IncludeMySQLPool)
 		///ditto
 		package bool isAutoRegistered(Nullable!PreparedInfo info)
 		{
-			return info.isNull || !info.queuedForRelease;
+			return info.isNull || !info.get.queuedForRelease;
 		}
 
 		/// Is the given statement set to be automatically released on all
@@ -375,7 +375,7 @@ version(IncludeMySQLPool)
 		///ditto
 		package bool isAutoReleased(Nullable!PreparedInfo info)
 		{
-			return info.isNull || info.queuedForRelease;
+			return info.isNull || info.get.queuedForRelease;
 		}
 
 		/++

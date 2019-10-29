@@ -1189,7 +1189,7 @@ public:
 	///ditto
 	package bool isRegistered(Nullable!PreparedServerInfo info)
 	{
-		return !info.isNull && !info.queuedForRelease;
+		return !info.isNull && !info.get.queuedForRelease;
 	}
 }
 
