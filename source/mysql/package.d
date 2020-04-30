@@ -1,4 +1,4 @@
-﻿/++
+/++
 Imports all of $(LINK2 https://github.com/mysql-d/mysql-native, mysql-native).
 
 MySQL_to_D_Type_Mappings:
@@ -40,7 +40,7 @@ D_to_MySQL_Type_Mappings:
 
 $(TABLE
 	$(TR $(TH D            ) $(TH MySQL               ))
-	
+
 	$(TR $(TD typeof(null) ) $(TD NULL                ))
 	$(TR $(TD bool         ) $(TD BIT                 ))
 	$(TR $(TD (u)byte      ) $(TD (UNSIGNED) TINY     ))
@@ -49,7 +49,7 @@ $(TABLE
 	$(TR $(TD (u)long      ) $(TD (UNSIGNED) LONGLONG ))
 	$(TR $(TD float        ) $(TD (UNSIGNED) FLOAT    ))
 	$(TR $(TD double       ) $(TD (UNSIGNED) DOUBLE   ))
-	
+
 	$(TR $(TD $(STD_DATETIME_DATE Date)     ) $(TD DATE      ))
 	$(TR $(TD $(STD_DATETIME_DATE TimeOfDay)) $(TD TIME      ))
 	$(TR $(TD $(STD_DATETIME_DATE Time)     ) $(TD TIME      ))
@@ -59,22 +59,35 @@ $(TABLE
 	$(TR $(TD string    ) $(TD VARCHAR              ))
 	$(TR $(TD char[]    ) $(TD VARCHAR              ))
 	$(TR $(TD (u)byte[] ) $(TD SIGNED TINYBLOB      ))
-	$(TR $(TD other     ) $(TD unsupported (throws) ))
+	$(TR $(TD other     ) $(TD unsupported with Variant (throws) or MySQLVal (compiler error) ))
 )
 
+Note: This by default imports the unsafe version of the MySQL API. Please
+switch to the safe version (`import mysql.safe`) as this will be the default in
+the future. If you would prefer to use the unsafe version, it is advised to use
+the import `mysql.unsafe`, as this will be supported for at least one more
+major version, albeit deprecated.
+
+$(SAFE_MIGRATION)
 +/
 module mysql;
 
-public import mysql.commands;
-public import mysql.connection;
-public import mysql.escape;
-public import mysql.exceptions;
-public import mysql.metadata;
-public import mysql.pool;
-public import mysql.prepared;
-public import mysql.protocol.constants : SvrCapFlags;
-public import mysql.result;
-public import mysql.types;
+// by default we do the unsafe API.
+public import mysql.unsafe;
+
+// import the safe version for generating documentation.
+version(MySQLDocs)
+{
+	// also document safe items
+	import mysql.safe;
+
+	// also document forwarding modules
+	import mysql.commands;
+	import mysql.result;
+	import mysql.pool;
+	import mysql.prepared;
+	import mysql.connection;
+}
 
 debug(MYSQLN_TESTS)      version = DoCoreTests;
 debug(MYSQLN_CORE_TESTS) version = DoCoreTests;

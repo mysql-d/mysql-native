@@ -40,20 +40,17 @@ properly escaped all using the buffer that formattedWrite provides.
 
 Params:
 	Input = (Template Param) Type of the input
+
+Note:
+    The delegate is expected to be @safe as of version 3.1.0.
 +/
 struct MysqlEscape ( Input )
 {
 	Input input;
 
-	const void toString ( scope void delegate(const(char)[]) sink )
+	const void toString ( scope void delegate(const(char)[]) @safe sink )
 	{
-		struct SinkOutputRange
-		{
-			void put ( const(char)[] t ) { sink(t); }
-		}
-
-		SinkOutputRange r;
-		mysql_escape(input, r);
+		mysql_escape(input, sink);
 	}
 }
 
@@ -71,7 +68,7 @@ MysqlEscape!(T) mysqlEscape ( T ) ( T input )
 
 @("mysqlEscape")
 debug(MYSQLN_TESTS)
-unittest
+@safe unittest
 {
 	import std.array : appender;
 

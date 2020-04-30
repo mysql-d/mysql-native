@@ -4,11 +4,13 @@
 *.dll
 *.exe
 .dub
+.*.swp
 /bin
 /testConnectionStr.txt
 
 /docs/docs.json
 /docs/public/mysql/
+/docs/public/taggedalgebraic/
 /docs/public/file_hashes.json
 /docs/public/index.html
 /docs/public/mysql.html

@@ -8,17 +8,26 @@
 # DMD 2.086.0 and up cause errors when building the docs because
 # gen-package-version and Scriptlike need updated.
 
-rdmd --build-only -c -Isource -Dddocs_tmp -X -Xfdocs/docs.json -version=MySQLDocs --force source/mysql/package.d
-rm -rf docs_tmp
+# Need taggedalgebraic
+rm -rf ta
+git clone https://github.com/s-ludwig/taggedalgebraic.git ta
+rdmd --build-only -c -Isource -Ita/source -Dddocs_tmp -X -Xfdocs/docs.json -version=MySQLDocs --force source/mysql/package.d
+rm -rf docs_tmp ta
 rm source/mysql/package.o
 
 dub --version
-dub run gen-package-version -- mysql --ddoc=ddoc --src=source
+if ! dub run gen-package-version -- mysql --ddoc=ddoc --src=source; then
+  echo "Failed to build gen-package-version"
+  exit 1
+fi
 rm source/mysql/packageVersion.d
 
 echo Building ddox...
 cd ./ddox
-dub build
+if ! dub build; then
+   echo "Failed to build ddox"
+   exit 1
+fi
 cd ..
 echo Done building ddox...
 

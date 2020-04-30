@@ -1,4 +1,4 @@
-﻿/// Exceptions defined by mysql-native.
+/// Exceptions defined by mysql-native.
 module mysql.exceptions;
 
 import std.algorithm;
@@ -9,7 +9,8 @@ An exception type to distinguish exceptions thrown by this package.
 +/
 class MYX: Exception
 {
-	this(string msg, string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string msg, string file = __FILE__, size_t line = __LINE__)
 	{
 		super(msg, file, line);
 	}
@@ -26,12 +27,14 @@ class MYXReceived: MYX
 	ushort errorCode;
 	char[5] sqlState;
 
-	this(OKErrorPacket okp, string file, size_t line) pure
+@safe pure:
+
+	this(OKErrorPacket okp, string file, size_t line)
 	{
 		this(okp.message, okp.serverStatus, okp.sqlState, file, line);
 	}
 
-	this(string msg, ushort errorCode, char[5] sqlState, string file, size_t line) pure
+	this(string msg, ushort errorCode, char[5] sqlState, string file, size_t line)
 	{
 		this.errorCode = errorCode;
 		this.sqlState = sqlState;
@@ -47,7 +50,8 @@ if you receive this.)
 +/
 class MYXProtocol: MYX
 {
-	this(string msg, string file, size_t line) pure
+@safe pure:
+	this(string msg, string file, size_t line)
 	{
 		super(msg, file, line);
 	}
@@ -66,7 +70,8 @@ is no longer used.
 deprecated("No longer thrown by mysql-native. You can safely remove all handling of this exception from your code.")
 class MYXNotPrepared: MYX
 {
-	this(string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string file = __FILE__, size_t line = __LINE__)
 	{
 		super("The prepared statement has already been released.", file, line);
 	}
@@ -90,7 +95,8 @@ results in an exception derived from this.
 +/
 class MYXWrongFunction: MYX
 {
-	this(string msg, string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string msg, string file = __FILE__, size_t line = __LINE__)
 	{
 		super(msg, file, line);
 	}
@@ -105,7 +111,8 @@ that return result sets (such as SELECT), even if the result set has zero elemen
 +/
 class MYXResultRecieved: MYXWrongFunction
 {
-	this(string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string file = __FILE__, size_t line = __LINE__)
 	{
 		super(
 			"A result set was returned. Use the query functions, not exec, "~
@@ -124,7 +131,8 @@ for commands that don't produce result sets (such as INSERT).
 +/
 class MYXNoResultRecieved: MYXWrongFunction
 {
-	this(string msg, string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string msg, string file = __FILE__, size_t line = __LINE__)
 	{
 		super(
 			"The executed query did not produce a result set. Use the exec "~
@@ -142,7 +150,8 @@ has been issued on the same connection.
 +/
 class MYXInvalidatedRange: MYX
 {
-	this(string msg, string file = __FILE__, size_t line = __LINE__) pure
+@safe pure:
+	this(string msg, string file = __FILE__, size_t line = __LINE__)
 	{
 		super(msg, file, line);
 	}

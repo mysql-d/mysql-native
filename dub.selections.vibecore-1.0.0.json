@@ -4,7 +4,7 @@
 		"eventcore": "0.8.48",
 		"libasync": "0.8.4",
 		"memutils": "0.4.13",
-		"taggedalgebraic": "0.11.6",
+		"taggedalgebraic": "0.11.8",
 		"unit-threaded": "0.7.45",
 		"vibe-core": "1.0.0"
 	}

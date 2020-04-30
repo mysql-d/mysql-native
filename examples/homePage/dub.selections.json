@@ -6,9 +6,10 @@
 		"libev": "5.0.0+4.04",
 		"libevent": "2.0.1+2.0.16",
 		"memutils": "0.4.13",
+		"mysql-native": {"path":"../.."},
 		"openssl": "1.1.4+1.0.1g",
 		"stdx-allocator": "2.77.5",
-		"taggedalgebraic": "0.11.6",
+		"taggedalgebraic": "0.11.8",
 		"unit-threaded": "0.7.45",
 		"vibe-core": "1.7.0"
 	}

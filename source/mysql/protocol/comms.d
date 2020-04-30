@@ -1,4 +1,4 @@
-﻿/++
+/++
 Internal - Low-level communications.
 
 Consider this module the main entry point for the low-level MySQL/MariaDB
@@ -25,12 +25,12 @@ import std.conv;
 import std.digest.sha;
 import std.exception;
 import std.range;
-import std.variant;
 
 import mysql.connection;
 import mysql.exceptions;
-import mysql.prepared;
+import mysql.safe.prepared;
 import mysql.result;
+import mysql.types;
 
 import mysql.protocol.constants;
 import mysql.protocol.extra_types;
@@ -38,22 +38,34 @@ import mysql.protocol.packet_helpers;
 import mysql.protocol.packets;
 import mysql.protocol.sockets;
 
+import taggedalgebraic.taggedalgebraic;
+
+// Trick tagged algebraic into getting the value based on the kind enum. Much
+// easier than dealing with types when I already have the kind.
+auto kget(alias K, U)(auto ref TaggedAlgebraic!U ta) if (is(typeof(K) == TaggedAlgebraic!U.Kind))
+{
+	import taggedalgebraic.taggedunion;
+	return (cast(TaggedUnion!U)ta).value!K;
+}
+
+@safe:
+
 /// Low-level comms code relating to prepared statements.
 package struct ProtocolPrepared
 {
+	@safe:
 	import std.conv;
 	import std.datetime;
-	import std.variant;
 	import mysql.types;
-	
-	static ubyte[] makeBitmap(in Variant[] inParams)
+
+	static ubyte[] makeBitmap(in MySQLVal[] inParams)
 	{
 		size_t bml = (inParams.length+7)/8;
 		ubyte[] bma;
 		bma.length = bml;
 		foreach (i; 0..inParams.length)
 		{
-			if(inParams[i].type != typeid(typeof(null)))
+			if(inParams[i].kind != MySQLVal.Kind.Null)
 				continue;
 			size_t bn = i/8;
 			size_t bb = i%8;
@@ -80,7 +92,7 @@ package struct ProtocolPrepared
 		return prefix;
 	}
 
-	static ubyte[] analyseParams(Variant[] inParams, ParameterSpecialization[] psa,
+	static ubyte[] analyseParams(MySQLVal[] inParams, ParameterSpecialization[] psa,
 		out ubyte[] vals, out bool longData)
 	{
 		size_t pc = inParams.length;
@@ -108,112 +120,100 @@ package struct ProtocolPrepared
 			enum SIGNED    = 0;
 			if (psa[i].chunkSize)
 				longData= true;
-			if (inParams[i].type == typeid(typeof(null)))
+			if (inParams[i].kind == MySQLVal.Kind.Null)
 			{
 				types[ct++] = SQLType.NULL;
 				types[ct++] = SIGNED;
 				continue;
 			}
-			Variant v = inParams[i];
+			MySQLVal v = inParams[i];
 			SQLType ext = psa[i].type;
-			string ts = v.type.toString();
-			bool isRef;
-			if (ts[$-1] == '*')
-			{
-				ts.length = ts.length-1;
-				isRef= true;
-			}
+			auto ts = v.kind;
+			bool isRef = false;
 
-			switch (ts)
+			// TODO: use v.visit instead for more efficiency and shorter code.
+			with(MySQLVal.Kind) final switch (ts)
 			{
-				case "bool":
-				case "const(bool)":
-				case "immutable(bool)":
-				case "shared(immutable(bool))":
+				case BitRef:
+					isRef = true; goto case;
+				case Bit:
 					if (ext == SQLType.INFER_FROM_D_TYPE)
 						types[ct++] = SQLType.BIT;
 					else
 						types[ct++] = cast(ubyte) ext;
 					types[ct++] = SIGNED;
 					reAlloc(2);
-					bool bv = isRef? *(v.get!(const(bool*))): v.get!(const(bool));
+					bool bv = isRef? *v.kget!BitRef : v.kget!Bit;
 					vals[vcl++] = 1;
 					vals[vcl++] = bv? 0x31: 0x30;
 					break;
-				case "byte":
-				case "const(byte)":
-				case "immutable(byte)":
-				case "shared(immutable(byte))":
+				case ByteRef:
+					isRef = true; goto case;
+				case Byte:
 					types[ct++] = SQLType.TINY;
 					types[ct++] = SIGNED;
 					reAlloc(1);
-					vals[vcl++] = isRef? *(v.get!(const(byte*))): v.get!(const(byte));
+					vals[vcl++] = isRef? *v.kget!ByteRef : v.kget!Byte;
 					break;
-				case "ubyte":
-				case "const(ubyte)":
-				case "immutable(ubyte)":
-				case "shared(immutable(ubyte))":
+				case UByteRef:
+					isRef = true; goto case;
+				case UByte:
 					types[ct++] = SQLType.TINY;
 					types[ct++] = UNSIGNED;
 					reAlloc(1);
-					vals[vcl++] = isRef? *(v.get!(const(ubyte*))): v.get!(const(ubyte));
+					vals[vcl++] = isRef? *v.kget!UByteRef : v.kget!UByte;
 					break;
-				case "short":
-				case "const(short)":
-				case "immutable(short)":
-				case "shared(immutable(short))":
+				case ShortRef:
+					isRef = true; goto case;
+				case Short:
 					types[ct++] = SQLType.SHORT;
 					types[ct++] = SIGNED;
 					reAlloc(2);
-					short si = isRef? *(v.get!(const(short*))): v.get!(const(short));
+					short si = isRef? *v.kget!ShortRef : v.kget!Short;
 					vals[vcl++] = cast(ubyte) (si & 0xff);
 					vals[vcl++] = cast(ubyte) ((si >> 8) & 0xff);
 					break;
-				case "ushort":
-				case "const(ushort)":
-				case "immutable(ushort)":
-				case "shared(immutable(ushort))":
+				case UShortRef:
+					isRef = true; goto case;
+				case UShort:
 					types[ct++] = SQLType.SHORT;
 					types[ct++] = UNSIGNED;
 					reAlloc(2);
-					ushort us = isRef? *(v.get!(const(ushort*))): v.get!(const(ushort));
+					ushort us = isRef? *v.kget!UShortRef : v.kget!UShort;
 					vals[vcl++] = cast(ubyte) (us & 0xff);
 					vals[vcl++] = cast(ubyte) ((us >> 8) & 0xff);
 					break;
-				case "int":
-				case "const(int)":
-				case "immutable(int)":
-				case "shared(immutable(int))":
+				case IntRef:
+					isRef = true; goto case;
+				case Int:
 					types[ct++] = SQLType.INT;
 					types[ct++] = SIGNED;
 					reAlloc(4);
-					int ii = isRef? *(v.get!(const(int*))): v.get!(const(int));
+					int ii = isRef? *v.kget!IntRef : v.kget!Int;
 					vals[vcl++] = cast(ubyte) (ii & 0xff);
 					vals[vcl++] = cast(ubyte) ((ii >> 8) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ii >> 16) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ii >> 24) & 0xff);
 					break;
-				case "uint":
-				case "const(uint)":
-				case "immutable(uint)":
-				case "shared(immutable(uint))":
+				case UIntRef:
+					isRef = true; goto case;
+				case UInt:
 					types[ct++] = SQLType.INT;
 					types[ct++] = UNSIGNED;
 					reAlloc(4);
-					uint ui = isRef? *(v.get!(const(uint*))): v.get!(const(uint));
+					uint ui = isRef? *v.kget!UIntRef : v.kget!UInt;
 					vals[vcl++] = cast(ubyte) (ui & 0xff);
 					vals[vcl++] = cast(ubyte) ((ui >> 8) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ui >> 16) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ui >> 24) & 0xff);
 					break;
-				case "long":
-				case "const(long)":
-				case "immutable(long)":
-				case "shared(immutable(long))":
+				case LongRef:
+					isRef = true; goto case;
+				case Long:
 					types[ct++] = SQLType.LONGLONG;
 					types[ct++] = SIGNED;
 					reAlloc(8);
-					long li = isRef? *(v.get!(const(long*))): v.get!(const(long));
+					long li = isRef? *v.kget!LongRef : v.kget!Long;
 					vals[vcl++] = cast(ubyte) (li & 0xff);
 					vals[vcl++] = cast(ubyte) ((li >> 8) & 0xff);
 					vals[vcl++] = cast(ubyte) ((li >> 16) & 0xff);
@@ -223,14 +223,13 @@ package struct ProtocolPrepared
 					vals[vcl++] = cast(ubyte) ((li >> 48) & 0xff);
 					vals[vcl++] = cast(ubyte) ((li >> 56) & 0xff);
 					break;
-				case "ulong":
-				case "const(ulong)":
-				case "immutable(ulong)":
-				case "shared(immutable(ulong))":
+				case ULongRef:
+					isRef = true; goto case;
+				case ULong:
 					types[ct++] = SQLType.LONGLONG;
 					types[ct++] = UNSIGNED;
 					reAlloc(8);
-					ulong ul = isRef? *(v.get!(const(ulong*))): v.get!(const(ulong));
+					ulong ul = isRef? *v.kget!ULongRef : v.kget!ULong;
 					vals[vcl++] = cast(ubyte) (ul & 0xff);
 					vals[vcl++] = cast(ubyte) ((ul >> 8) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ul >> 16) & 0xff);
@@ -240,172 +239,122 @@ package struct ProtocolPrepared
 					vals[vcl++] = cast(ubyte) ((ul >> 48) & 0xff);
 					vals[vcl++] = cast(ubyte) ((ul >> 56) & 0xff);
 					break;
-				case "float":
-				case "const(float)":
-				case "immutable(float)":
-				case "shared(immutable(float))":
+				case FloatRef:
+					isRef = true; goto case;
+				case Float:
 					types[ct++] = SQLType.FLOAT;
 					types[ct++] = SIGNED;
 					reAlloc(4);
-					float f = isRef? *(v.get!(const(float*))): v.get!(const(float));
-					ubyte* ubp = cast(ubyte*) &f;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp;
+					float[1] f = [isRef? *v.kget!FloatRef : v.kget!Float];
+					ubyte[] uba = cast(ubyte[]) f[];
+					vals[vcl .. vcl + uba.length] = uba[];
+					vcl += uba.length;
 					break;
-				case "double":
-				case "const(double)":
-				case "immutable(double)":
-				case "shared(immutable(double))":
+				case DoubleRef:
+					isRef = true; goto case;
+				case Double:
 					types[ct++] = SQLType.DOUBLE;
 					types[ct++] = SIGNED;
 					reAlloc(8);
-					double d = isRef? *(v.get!(const(double*))): v.get!(const(double));
-					ubyte* ubp = cast(ubyte*) &d;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp++;
-					vals[vcl++] = *ubp;
+					double[1] d = [isRef? *v.kget!DoubleRef : v.kget!Double];
+					ubyte[] uba = cast(ubyte[]) d[];
+					vals[vcl .. uba.length] = uba[];
+					vcl += uba.length;
 					break;
-				case "std.datetime.date.Date":
-				case "const(std.datetime.date.Date)":
-				case "immutable(std.datetime.date.Date)":
-				case "shared(immutable(std.datetime.date.Date))":
-
-				case "std.datetime.Date":
-				case "const(std.datetime.Date)":
-				case "immutable(std.datetime.Date)":
-				case "shared(immutable(std.datetime.Date))":
+				case DateRef:
+					isRef = true; goto case;
+				case Date:
 					types[ct++] = SQLType.DATE;
 					types[ct++] = SIGNED;
-					Date date = isRef? *(v.get!(const(Date*))): v.get!(const(Date));
+					auto date = isRef? *v.kget!DateRef : v.kget!Date;
 					ubyte[] da = pack(date);
 					size_t l = da.length;
 					reAlloc(l);
 					vals[vcl..vcl+l] = da[];
 					vcl += l;
 					break;
-				case "std.datetime.TimeOfDay":
-				case "const(std.datetime.TimeOfDay)":
-				case "immutable(std.datetime.TimeOfDay)":
-				case "shared(immutable(std.datetime.TimeOfDay))":
-
-				case "std.datetime.date.TimeOfDay":
-				case "const(std.datetime.date.TimeOfDay)":
-				case "immutable(std.datetime.date.TimeOfDay)":
-				case "shared(immutable(std.datetime.date.TimeOfDay))":
-
-				case "std.datetime.Time":
-				case "const(std.datetime.Time)":
-				case "immutable(std.datetime.Time)":
-				case "shared(immutable(std.datetime.Time))":
+				case TimeRef:
+					isRef = true; goto case;
+				case Time:
 					types[ct++] = SQLType.TIME;
 					types[ct++] = SIGNED;
-					TimeOfDay time = isRef? *(v.get!(const(TimeOfDay*))): v.get!(const(TimeOfDay));
+					auto time = isRef? *v.kget!TimeRef : v.kget!Time;
 					ubyte[] ta = pack(time);
 					size_t l = ta.length;
 					reAlloc(l);
 					vals[vcl..vcl+l] = ta[];
 					vcl += l;
 					break;
-				case "std.datetime.date.DateTime":
-				case "const(std.datetime.date.DateTime)":
-				case "immutable(std.datetime.date.DateTime)":
-				case "shared(immutable(std.datetime.date.DateTime))":
-
-				case "std.datetime.DateTime":
-				case "const(std.datetime.DateTime)":
-				case "immutable(std.datetime.DateTime)":
-				case "shared(immutable(std.datetime.DateTime))":
+				case DateTimeRef:
+					isRef = true; goto case;
+				case DateTime:
 					types[ct++] = SQLType.DATETIME;
 					types[ct++] = SIGNED;
-					DateTime dt = isRef? *(v.get!(const(DateTime*))): v.get!(const(DateTime));
+					auto dt = isRef? *v.kget!DateTimeRef : v.kget!DateTime;
 					ubyte[] da = pack(dt);
 					size_t l = da.length;
 					reAlloc(l);
 					vals[vcl..vcl+l] = da[];
 					vcl += l;
 					break;
-				case "mysql.types.Timestamp":
-				case "const(mysql.types.Timestamp)":
-				case "immutable(mysql.types.Timestamp)":
-				case "shared(immutable(mysql.types.Timestamp))":
+				case TimestampRef:
+					isRef = true; goto case;
+				case Timestamp:
 					types[ct++] = SQLType.TIMESTAMP;
 					types[ct++] = SIGNED;
-					Timestamp tms = isRef? *(v.get!(const(Timestamp*))): v.get!(const(Timestamp));
-					DateTime dt = mysql.protocol.packet_helpers.toDateTime(tms.rep);
+					auto tms = isRef? *v.kget!TimestampRef : v.kget!Timestamp;
+					auto dt = mysql.protocol.packet_helpers.toDateTime(tms.rep);
 					ubyte[] da = pack(dt);
 					size_t l = da.length;
 					reAlloc(l);
 					vals[vcl..vcl+l] = da[];
 					vcl += l;
 					break;
-				case "char[]":
-				case "const(char[])":
-				case "immutable(char[])":
-				case "const(char)[]":
-				case "immutable(char)[]":
-				case "shared(immutable(char)[])":
-				case "shared(immutable(char))[]":
-				case "shared(immutable(char[]))":
+				case TextRef:
+					isRef = true; goto case;
+				case Text:
 					if (ext == SQLType.INFER_FROM_D_TYPE)
 						types[ct++] = SQLType.VARCHAR;
 					else
 						types[ct++] = cast(ubyte) ext;
 					types[ct++] = SIGNED;
-					const char[] ca = isRef? *(v.get!(const(char[]*))): v.get!(const(char[]));
-					ubyte[] packed = packLCS(cast(void[]) ca);
+					const char[] ca = isRef? *v.kget!TextRef : v.kget!Text;
+					ubyte[] packed = packLCS(ca);
 					reAlloc(packed.length);
 					vals[vcl..vcl+packed.length] = packed[];
 					vcl += packed.length;
 					break;
-				case "byte[]":
-				case "const(byte[])":
-				case "immutable(byte[])":
-				case "const(byte)[]":
-				case "immutable(byte)[]":
-				case "shared(immutable(byte)[])":
-				case "shared(immutable(byte))[]":
-				case "shared(immutable(byte[]))":
+				case CTextRef:
+					isRef = true; goto case;
+				case CText:
+					if (ext == SQLType.INFER_FROM_D_TYPE)
+						types[ct++] = SQLType.VARCHAR;
+					else
+						types[ct++] = cast(ubyte) ext;
+					types[ct++] = SIGNED;
+					const char[] ca = isRef? *v.kget!CTextRef : v.kget!CText;
+					ubyte[] packed = packLCS(ca);
+					reAlloc(packed.length);
+					vals[vcl..vcl+packed.length] = packed[];
+					vcl += packed.length;
+					break;
+				case BlobRef:
+					isRef = true; goto case;
+				case Blob:
+				case CBlob:
 					if (ext == SQLType.INFER_FROM_D_TYPE)
 						types[ct++] = SQLType.TINYBLOB;
 					else
 						types[ct++] = cast(ubyte) ext;
 					types[ct++] = SIGNED;
-					const byte[] ba = isRef? *(v.get!(const(byte[]*))): v.get!(const(byte[]));
-					ubyte[] packed = packLCS(cast(void[]) ba);
+					const ubyte[] uba = isRef? *v.kget!BlobRef : (ts == Blob ? v.kget!Blob : v.kget!CBlob);
+					ubyte[] packed = packLCS(uba);
 					reAlloc(packed.length);
 					vals[vcl..vcl+packed.length] = packed[];
 					vcl += packed.length;
 					break;
-				case "ubyte[]":
-				case "const(ubyte[])":
-				case "immutable(ubyte[])":
-				case "const(ubyte)[]":
-				case "immutable(ubyte)[]":
-				case "shared(immutable(ubyte)[])":
-				case "shared(immutable(ubyte))[]":
-				case "shared(immutable(ubyte[]))":
-					if (ext == SQLType.INFER_FROM_D_TYPE)
-						types[ct++] = SQLType.TINYBLOB;
-					else
-						types[ct++] = cast(ubyte) ext;
-					types[ct++] = SIGNED;
-					const ubyte[] uba = isRef? *(v.get!(const(ubyte[]*))): v.get!(const(ubyte[]));
-					ubyte[] packed = packLCS(cast(void[]) uba);
-					reAlloc(packed.length);
-					vals[vcl..vcl+packed.length] = packed[];
-					vcl += packed.length;
-					break;
-				case "void":
+				case Null:
 					throw new MYX("Unbound parameter " ~ to!string(i), __FILE__, __LINE__);
-				default:
-					throw new MYX("Unsupported parameter type " ~ ts, __FILE__, __LINE__);
 			}
 		}
 		vals.length = vcl;
@@ -419,7 +368,7 @@ package struct ProtocolPrepared
 		{
 			if (!psn.chunkSize) continue;
 			uint cs = psn.chunkSize;
-			uint delegate(ubyte[]) dg = psn.chunkDelegate;
+			uint delegate(ubyte[]) @safe dg = psn.chunkDelegate;
 
 			ubyte[] chunk;
 			chunk.length = cs+11;
@@ -448,10 +397,10 @@ package struct ProtocolPrepared
 	}
 
 	static void sendCommand(Connection conn, uint hStmt, PreparedStmtHeaders psh,
-		Variant[] inParams, ParameterSpecialization[] psa)
+		MySQLVal[] inParams, ParameterSpecialization[] psa)
 	{
 		conn.autoPurge();
-		
+
 		ubyte[] packet;
 		conn.resetPacket();
 
@@ -490,7 +439,7 @@ package(mysql) struct ExecQueryImplInfo
 	// For prepared statements:
 	uint hStmt;
 	PreparedStmtHeaders psh;
-	Variant[] inParams;
+	MySQLVal[] inParams;
 	ParameterSpecialization[] psa;
 }
 
@@ -636,7 +585,7 @@ body
 
 // Moved here from `struct Row.this`
 package(mysql) void ctorRow(Connection conn, ref ubyte[] packet, ResultSetHeaders rh, bool binary,
-	out Variant[] _values, out bool[] _nulls, out string[] _names)
+	out MySQLVal[] _values, out bool[] _nulls, out string[] _names)
 in
 {
 	assert(rh.fieldCount <= uint.max);
@@ -771,7 +720,7 @@ body
 	}
 
 	conn.autoPurge();
- 
+
 	conn.resetPacket();
 
 	ubyte[] header;
@@ -860,7 +809,7 @@ package(mysql) ubyte[] makeToken(string password, ubyte[] authBuf)
 }
 
 /// Get the next `mysql.result.Row` of a pending result set.
-package(mysql) Row getNextRow(Connection conn)
+package(mysql) SafeRow getNextRow(Connection conn)
 {
 	scope(failure) conn.kill();
 
@@ -870,7 +819,7 @@ package(mysql) Row getNextRow(Connection conn)
 		conn._headersPending = false;
 	}
 	ubyte[] packet;
-	Row rr;
+	SafeRow rr;
 	packet = conn.getPacket();
 	if(packet.front == ResultPacketMarker.error)
 		throw new MYXReceived(OKErrorPacket(packet), __FILE__, __LINE__);
@@ -881,9 +830,9 @@ package(mysql) Row getNextRow(Connection conn)
 		return rr;
 	}
 	if (conn._binaryPending)
-		rr = Row(conn, packet, conn._rsh, true);
+		rr = SafeRow(conn, packet, conn._rsh, true);
 	else
-		rr = Row(conn, packet, conn._rsh, false);
+		rr = SafeRow(conn, packet, conn._rsh, false);
 	//rr._valid = true;
 	return rr;
 }
@@ -967,7 +916,7 @@ package(mysql) SvrCapFlags setClientFlags(SvrCapFlags serverCaps, SvrCapFlags ca
 	// didn't supply it
 	cCaps |= SvrCapFlags.PROTOCOL41;
 	cCaps |= SvrCapFlags.SECURE_CONNECTION;
-	
+
 	return cCaps;
 }
 
@@ -998,7 +947,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	scope(failure) conn.kill();
 
 	PreparedServerInfo info;
-	
+
 	conn.sendCmd(CommandType.STMT_PREPARE, sql);
 	conn._fieldCount = 0;
 
@@ -1082,7 +1031,7 @@ Get a textual report on the server status.
 
 (COM_STATISTICS)
 +/
-package(mysql) string serverStats(Connection conn)
+package(mysql) string serverStats(Connection conn) @trusted
 {
 	conn.sendCmd(CommandType.STATISTICS, []);
 	return cast(string) conn.getPacket();

@@ -1,4 +1,4 @@
-﻿/// Internal - Helper functions for the communication protocol.
+/// Internal - Helper functions for the communication protocol.
 module mysql.protocol.packet_helpers;
 
 import std.algorithm;
@@ -14,6 +14,8 @@ import mysql.protocol.constants;
 import mysql.protocol.extra_types;
 import mysql.protocol.sockets;
 import mysql.types;
+
+@safe:
 
 /++
 Function to extract a time difference from a binary encoded row.
@@ -105,7 +107,7 @@ Text representations of a time of day are as in 14:22:02
 Params: s = A string representation of the time.
 Returns: A populated or default initialized std.datetime.TimeOfDay struct.
 +/
-TimeOfDay toTimeOfDay(string s)
+TimeOfDay toTimeOfDay(const(char)[] s)
 {
 	TimeOfDay tod;
 	tod.hour = parse!int(s);
@@ -176,7 +178,7 @@ Text representations of a Date are as in 2011-11-11
 Params: s = A string representation of the time difference.
 Returns: A populated or default initialized `std.datetime.Date` struct.
 +/
-Date toDate(string s)
+Date toDate(const(char)[] s)
 {
 	int year = parse!(ushort)(s);
 	enforce!MYXProtocol(s.skipOver("-"), `Expected: "-"`);
@@ -259,7 +261,7 @@ Text representations of a DateTime are as in 2011-11-11 12:20:02
 Params: s = A string representation of the time difference.
 Returns: A populated or default initialized `std.datetime.DateTime` struct.
 +/
-DateTime toDateTime(string s)
+DateTime toDateTime(const(char)[] s)
 {
 	int year = parse!(ushort)(s);
 	enforce!MYXProtocol(s.skipOver("-"), `Expected: "-"`);
@@ -356,7 +358,8 @@ in
 }
 body
 {
-	return cast(string)packet.consume(N);
+	auto result = packet.consume(N);
+	return (() @trusted => cast(string)result)();
 }
 
 /// Returns N number of bytes from the packet and advances the array
@@ -529,7 +532,7 @@ body
 }
 
 
-T myto(T)(string value)
+T myto(T)(const(char)[] value)
 {
 	static if(is(T == DateTime))
 		return toDateTime(value);
@@ -550,9 +553,14 @@ in
 }
 body
 {
-	T result = 0;
-	(cast(ubyte*)&result)[0..T.sizeof] = packet[0..T.sizeof];
-	return result;
+	union R {
+		T val = 0;
+		ubyte[T.sizeof] bytes;
+	}
+
+	R item;
+	item.bytes[] = packet[0..T.sizeof];
+	return item.val;
 }
 
 T consume(T, ubyte N=T.sizeof)(ref ubyte[] packet) pure nothrow
@@ -612,7 +620,7 @@ SQLValue consumeNonBinaryValueIfComplete(T)(ref ubyte[] packet, bool unsigned)
 		// and convert the data
 		packet.skip(lcb.totalBytes);
 		assert(packet.length >= lcb.value);
-		auto value = cast(string) packet.consume(cast(size_t)lcb.value);
+		auto value = cast(char[]) packet.consume(cast(size_t)lcb.value);
 
 		if(!result.isNull)
 		{
@@ -627,22 +635,7 @@ SQLValue consumeNonBinaryValueIfComplete(T)(ref ubyte[] packet, bool unsigned)
 			}
 			else
 			{
-				static if(isArray!T)
-				{
-					// to!() crashes when trying to convert empty strings
-					// to arrays, so we have this hack to just store any
-					// empty array in those cases
-					if(!value.length)
-						result.value = T.init;
-					else
-						result.value = cast(T)value.dup;
-
-				}
-				else
-				{
-					// TODO: DateTime values etc might be incomplete!
-					result.value = myto!T(value);
-				}
+				result.value = value.myto!T;
 			}
 		}
 	}
@@ -724,7 +717,7 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
 				if(charSet == 0x3F) // CharacterSet == binary
 					result.value = data; // BLOB-ish
 				else
-					result.value = cast(string)data; // TEXT-ish
+					result.value = (() @trusted => cast(string)data)(); // TEXT-ish
 			}
 
 			// Type BIT is treated as a length coded binary (like a BLOB or VARCHAR),
@@ -996,12 +989,12 @@ body
 	return t;
 }
 
-ubyte[] packLCS(void[] a) pure nothrow
+ubyte[] packLCS(const(void)[] a) pure nothrow
 {
 	size_t offset;
 	ubyte[] t = packLength(a.length, offset);
 	if (t[0])
-		t[offset..$] = (cast(ubyte[]) a)[0..$];
+		t[offset..$] = (cast(const(ubyte)[]) a)[0..$];
 	return t;
 }
 

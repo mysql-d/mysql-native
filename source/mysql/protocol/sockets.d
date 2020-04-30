@@ -1,4 +1,4 @@
-﻿/// Internal - Phobos and vibe.d sockets.
+/// Internal - Phobos and vibe.d sockets.
 module mysql.protocol.sockets;
 
 import std.exception;
@@ -27,8 +27,8 @@ else
 	alias PlainVibeDSocket = Object; ///ditto
 }
 
-alias OpenSocketCallbackPhobos = PlainPhobosSocket function(string,ushort);
-alias OpenSocketCallbackVibeD = PlainVibeDSocket function(string,ushort);
+alias OpenSocketCallbackPhobos = PlainPhobosSocket function(string,ushort) @safe;
+alias OpenSocketCallbackVibeD = PlainVibeDSocket function(string,ushort) @safe;
 
 enum MySQLSocketType { phobos, vibed }
 
@@ -36,6 +36,7 @@ enum MySQLSocketType { phobos, vibed }
 /// Used to wrap both Phobos and Vibe.d sockets with a common interface.
 interface MySQLSocket
 {
+@safe:
 	void close();
 	@property bool connected() const;
 	void read(ubyte[] dst);
@@ -50,6 +51,7 @@ interface MySQLSocket
 /// Wraps a Phobos socket with the common interface
 class MySQLSocketPhobos : MySQLSocket
 {
+@safe:
 	private PlainPhobosSocket socket;
 
 	/// The socket should already be open
@@ -106,6 +108,7 @@ version(Have_vibe_core) {
 	/// Wraps a Vibe.d socket with the common interface
 	class MySQLSocketVibeD : MySQLSocket
 	{
+		@safe:
 		private PlainVibeDSocket socket;
 
 		/// The socket should already be open

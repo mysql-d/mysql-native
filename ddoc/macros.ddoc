@@ -6,9 +6,10 @@ Macros:
 	DOLLAR = $
 	COLON = &#58;
 	EM       = $(B $(I $0) )
-	
+
 	TYPE_MAPPINGS = See the $(LINK2 $(DDOX_ROOT_DIR)/mysql.html, MySQL/D Type Mappings tables)
-	
+	SAFE_MIGRATION = See the $(LINK2 https://github.com/mysql-d/mysql-native/blob/master/SAFE_MIGRATION.md, Safe Migration) document for more details.
+
 	STD_DATETIME_DATE = $(D_INLINECODE $(LINK2 https://dlang.org/phobos/std_datetime_date.html#$0, $0))
 	STD_EXCEPTION     = $(D_INLINECODE $(LINK2 https://dlang.org/phobos/std_exception.html#$0, $0))
 	STD_FILE          = $(D_INLINECODE $(LINK2 https://dlang.org/phobos/std_file.html#$0, $0))

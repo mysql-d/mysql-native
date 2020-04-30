@@ -32,7 +32,7 @@ void main(string[] args)
 		"SELECT * FROM `tablename` WHERE `name`=? OR `name`=?",
 		"Bob", "Bobby");
 	bobs.close(); // Skip them
-	
+
 	Row[] rs = conn.query( // Same SQL as above, but only prepared once and is reused!
 		"SELECT * FROM `tablename` WHERE `name`=? OR `name`=?",
 		"Bob", "Ann").array; // Get ALL the rows at once
