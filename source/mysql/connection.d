@@ -513,7 +513,6 @@ package:
 	// so detect & prevent infinite recursion.
 	private bool isAutoPurging = false;
 
-
 	/// Called whenever mysql-native needs to send a command to the server
 	/// and be sure there aren't any pending results (which would prevent
 	/// a new command from being sent).
@@ -737,6 +736,16 @@ public:
 		if (_open == OpenState.connected)
 			kill();
 		resetPacket();
+	}
+
+	void tcpNoDelay(bool enabled)
+	{
+		_socket.tcpNoDelay(enabled);
+	}
+
+	bool tcpNoDelay()
+	{
+		return _socket.tcpNoDelay;
 	}
 
 	/++

@@ -1,5 +1,7 @@
-﻿/// Internal - Phobos and vibe.d sockets.
+/// Internal - Phobos and vibe.d sockets.
 module mysql.protocol.sockets;
+
+import core.stdc.stdint;
 
 import std.exception;
 import std.socket;
@@ -45,6 +47,8 @@ interface MySQLSocket
 	void release();
 	bool isOwner();
 	bool amOwner();
+	void tcpNoDelay(bool enabled);
+	bool tcpNoDelay();
 }
 
 /// Wraps a Phobos socket with the common interface
@@ -100,6 +104,18 @@ class MySQLSocketPhobos : MySQLSocket
 	void release() { /+ Do nothing +/ }
 	bool isOwner() { return true; }
 	bool amOwner() { return true; }
+
+	void tcpNoDelay(bool enabled)
+	{
+		socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, cast(int32_t) enabled);
+	}
+
+	bool tcpNoDelay()
+	{
+		int32_t result = void;
+		socket.getOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, result);
+		return result != 0;
+	}
 }
 
 version(Have_vibe_core) {
@@ -155,6 +171,16 @@ version(Have_vibe_core) {
 			void release() { /+ Do nothing +/ }
 			bool isOwner() { return true; }
 			bool amOwner() { return true; }
+		}
+
+		void tcpNoDelay(bool enabled)
+		{
+			socket.tcpNoDelay(enabled);
+		}
+
+		bool tcpNoDelay()
+		{
+			return socket.tcpNoDelay;
 		}
 	}
 }

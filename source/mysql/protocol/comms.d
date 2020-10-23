@@ -1,4 +1,4 @@
-﻿/++
+/++
 Internal - Low-level communications.
 
 Consider this module the main entry point for the low-level MySQL/MariaDB
@@ -45,7 +45,7 @@ package struct ProtocolPrepared
 	import std.datetime;
 	import std.variant;
 	import mysql.types;
-	
+
 	static ubyte[] makeBitmap(in Variant[] inParams)
 	{
 		size_t bml = (inParams.length+7)/8;
@@ -451,7 +451,7 @@ package struct ProtocolPrepared
 		Variant[] inParams, ParameterSpecialization[] psa)
 	{
 		conn.autoPurge();
-		
+
 		ubyte[] packet;
 		conn.resetPacket();
 
@@ -771,7 +771,7 @@ body
 	}
 
 	conn.autoPurge();
- 
+
 	conn.resetPacket();
 
 	ubyte[] header;
@@ -967,7 +967,7 @@ package(mysql) SvrCapFlags setClientFlags(SvrCapFlags serverCaps, SvrCapFlags ca
 	// didn't supply it
 	cCaps |= SvrCapFlags.PROTOCOL41;
 	cCaps |= SvrCapFlags.SECURE_CONNECTION;
-	
+
 	return cCaps;
 }
 
@@ -998,7 +998,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	scope(failure) conn.kill();
 
 	PreparedServerInfo info;
-	
+
 	conn.sendCmd(CommandType.STMT_PREPARE, sql);
 	conn._fieldCount = 0;
 
