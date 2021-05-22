@@ -35,11 +35,10 @@ configuration "unittest-vibe" {
 	targetType "executable"
 	targetPath "bin/"
 	targetName "mysqln-tests-vibe"
-	excludedSourceFiles "source/app.d"
+	excludedSourceFiles "source/app.d" "source/mysql/package.d"
 
 	dependency "vibe-core" version="~>1.16.0" optional=false
 
-	// mainSourceFile "source/mysql/package.d"
 	debugVersions "MYSQLN_TESTS"
 }
 
