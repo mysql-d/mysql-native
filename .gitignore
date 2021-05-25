@@ -20,6 +20,7 @@ dub.selections.json
 
 # Executable file name when 'dub' is run on linux
 mysql-native
+tests/integration-tests
 examples/homePage/example
 
 ddoc/packageVersion.ddoc

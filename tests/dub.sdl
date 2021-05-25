@@ -1,0 +1,23 @@
+name "integration-tests"
+
+description "Integrations Tests for MySQL Native"
+
+license "BSL-1.0"
+copyright "Copyright (c) 2021 Sam Bate (singingbush)"
+authors "Sam Bate (singingbush)"
+
+dependency "mysql-native" path="../"
+
+targetType "executable"
+
+configuration "default" {
+    subConfiguration "mysql-native" "library"
+}
+
+configuration "use-vibe" {
+    subConfiguration "mysql-native" "library"
+
+    versions "USE_CONNECTION_POOL"
+
+    dependency "vibe-core" version="~>1.16.0" optional=false
+}

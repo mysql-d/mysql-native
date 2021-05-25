@@ -62,16 +62,13 @@ jobs:
   #         echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
   #         dub run -c unittest-vibe-ut -- -t
 
-  #     - name: Build The Example Project
-  #       working-directory: ./examples/homePage
-  #       run: dub build
-
-  #     - name: Run Example (MySQL 8)
-  #       working-directory: ./examples/homePage
+  #     - name: Test (MySQL 8)
+  #       working-directory: ./tests
   #       env:
   #         MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
   #       run: |
-  #         ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+  #         dub build
+  #         ./integration-tests --port=$MYSQL_PORT
 
   mysql57-tests:
     name: MySQL 5.7 Tests ${{ matrix.compiler }}
@@ -127,16 +124,21 @@ jobs:
           echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
           dub run -c unittest-vibe-ut -- -t
 
-      - name: Build The Example Project
-        working-directory: ./examples/homePage
-        run: dub build
-
-      - name: Run Example (MySQL 5.7)
-        working-directory: ./examples/homePage
+      - name: Test (MySQL 5.7)
+        working-directory: ./tests
         env:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
-          ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+          dub build
+          ./integration-tests --port=$MYSQL_PORT
+
+      - name: Test (MySQL 5.7) vibe-core
+        working-directory: ./tests
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          dub build --config=use-vibe
+          ./integration-tests --port=$MYSQL_PORT
 
   mariadb10-tests:
     name: MariaDB 10 Tests ${{ matrix.compiler }}
@@ -192,13 +194,18 @@ jobs:
           echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
           dub run -c unittest-vibe-ut -- -t
 
-      - name: Build The Example Project
-        working-directory: ./examples/homePage
-        run: dub build
-
-      - name: Run Example (mariadb 10)
-        working-directory: ./examples/homePage
+      - name: Test (mariadb 10)
+        working-directory: ./tests
         env:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
-          ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+          dub build
+          ./integration-tests --port=$MYSQL_PORT
+
+      - name: Test (mariadb 10) vibe-core
+        working-directory: ./tests
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          dub build --config=use-vibe
+          ./integration-tests --port=$MYSQL_PORT

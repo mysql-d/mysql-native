@@ -3,7 +3,7 @@ name: Builds
 # Overall MySQL Native should work on the last 10 minor compiler releases (same as Vibe.d).
 # For simplicity and speed of the CI, the latest versions of dmd and ldc must are tested on
 # all platforms (Windows, Linux, and Mac) with older compilers only being tested on Windows/Linux.
-# The integration testing (via examples) is done on Linux against Mysql 5.7
+# The integration testing is done on Linux against Mysql 5.7
 
 on:
   schedule:

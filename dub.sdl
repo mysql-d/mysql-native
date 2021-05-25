@@ -18,12 +18,10 @@ configuration "application" {
 
 configuration "library" {
 	targetType "library"
-	excludedSourceFiles "source/app.d"
 }
 
 // Do not use this. Use "run_tests" insetad.
 configuration "unittest" {
-	excludedSourceFiles "source/app.d"
 	preBuildCommands \
 		"echo \"ERROR: Don't use 'dub test' to test mysql-native. Use 'run_tests' instead.\"" \
 		"echo Bailing..." \
@@ -35,7 +33,6 @@ configuration "unittest-vibe" {
 	targetType "executable"
 	targetPath "bin/"
 	targetName "mysqln-tests-vibe"
-	excludedSourceFiles "source/app.d"
 
 	dependency "vibe-core" version="~>1.16.0" optional=false
 
@@ -48,7 +45,6 @@ configuration "unittest-vibe-ut" {
 	targetType "executable"
 	targetPath "bin/"
 	targetName "mysqln-tests-vibe"
-	excludedSourceFiles "source/app.d"
 	sourceFiles "bin/ut.d"
 	importPaths "bin/"
 	buildOptions "unittests"
