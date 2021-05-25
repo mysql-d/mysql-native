@@ -147,9 +147,33 @@ debug(MYSQLN_TESTS)
 unittest
 {
 	import mysql.test.common;
-	import mysql.test.integration;
+
 	mixin(scopedCn);
-	initBaseTestTables(cn);
+	
+	cn.exec("DROP TABLE IF EXISTS `basetest`");
+	cn.exec(
+		"CREATE TABLE `basetest` (
+		`boolcol` bit(1),
+		`bytecol` tinyint(4),
+		`ubytecol` tinyint(3) unsigned,
+		`shortcol` smallint(6),
+		`ushortcol` smallint(5) unsigned,
+		`intcol` int(11),
+		`uintcol` int(10) unsigned,
+		`longcol` bigint(20),
+		`ulongcol` bigint(20) unsigned,
+		`charscol` char(10),
+		`stringcol` varchar(50),
+		`bytescol` tinyblob,
+		`datecol` date,
+		`timecol` time,
+		`dtcol` datetime,
+		`doublecol` double,
+		`floatcol` float,
+		`nullcol` int(11),
+		`decimalcol` decimal(11,4)
+		) ENGINE=InnoDB DEFAULT CHARSET=latin1"
+	);
 
 	exec(cn, `DROP PROCEDURE IF EXISTS insert2`);
 	exec(cn, `

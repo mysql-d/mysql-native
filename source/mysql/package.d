@@ -89,7 +89,6 @@ version(DoCoreTests)
 	public import mysql.protocol.sockets;
 
 	public import mysql.test.common;
-	public import mysql.test.integration;
 	public import mysql.test.regression;
 
 	version(MYSQLN_TESTS_NO_MAIN) {} else
