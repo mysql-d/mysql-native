@@ -11,6 +11,7 @@ import std.typecons;
 
 import mysql.commands;
 import mysql.exceptions;
+import mysql.logger;
 import mysql.prepared;
 import mysql.protocol.comms;
 import mysql.protocol.constants;
@@ -385,6 +386,7 @@ package:
 
 	static PlainPhobosSocket defaultOpenSocketPhobos(string host, ushort port)
 	{
+		logDebug("opening phobos socket %s:%d", host, port);
 		auto s = new PlainPhobosSocket();
 		s.connect(new InternetAddress(host, port));
 		return s;
@@ -393,7 +395,10 @@ package:
 	static PlainVibeDSocket defaultOpenSocketVibeD(string host, ushort port)
 	{
 		version(Have_vibe_core)
-			return vibe.core.net.connectTCP(host, port);
+        {
+            logDebug("opening vibe-d socket %s:%d", host, port);
+            return vibe.core.net.connectTCP(host, port);
+        }
 		else
 			assert(0);
 	}

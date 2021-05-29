@@ -29,6 +29,7 @@ import std.variant;
 
 import mysql.connection;
 import mysql.exceptions;
+import mysql.logger;
 import mysql.prepared;
 import mysql.result;
 
@@ -45,7 +46,7 @@ package struct ProtocolPrepared
 	import std.datetime;
 	import std.variant;
 	import mysql.types;
-	
+
 	static ubyte[] makeBitmap(in Variant[] inParams)
 	{
 		size_t bml = (inParams.length+7)/8;
@@ -451,7 +452,7 @@ package struct ProtocolPrepared
 		Variant[] inParams, ParameterSpecialization[] psa)
 	{
 		conn.autoPurge();
-		
+
 		ubyte[] packet;
 		conn.resetPacket();
 
@@ -511,9 +512,15 @@ package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out u
 
 	// Send data
 	if(info.isPrepared)
+	{
+		logTrace("prepared SQL: %s", info.hStmt);
+
 		ProtocolPrepared.sendCommand(conn, info.hStmt, info.psh, info.inParams, info.psa);
+	}
 	else
 	{
+		logTrace("exec query: %s", info.sql);
+
 		conn.sendCmd(CommandType.QUERY, info.sql);
 		conn._fieldCount = 0;
 	}
@@ -525,6 +532,9 @@ package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out u
 	{
 		conn.resetPacket();
 		auto okp = OKErrorPacket(packet);
+
+		logError("packet error: %s %s", okp.error, okp.message);
+
 		enforcePacketOK(okp);
 		ra = okp.affected;
 		conn._serverStatus = okp.serverStatus;
@@ -771,7 +781,7 @@ body
 	}
 
 	conn.autoPurge();
- 
+
 	conn.resetPacket();
 
 	ubyte[] header;
@@ -967,7 +977,7 @@ package(mysql) SvrCapFlags setClientFlags(SvrCapFlags serverCaps, SvrCapFlags ca
 	// didn't supply it
 	cCaps |= SvrCapFlags.PROTOCOL41;
 	cCaps |= SvrCapFlags.SECURE_CONNECTION;
-	
+
 	return cCaps;
 }
 
@@ -988,6 +998,11 @@ body
 
 	auto packet = conn.getPacket();
 	auto okp = OKErrorPacket(packet);
+
+	if(okp.error) {
+		logError("Authentication failure: %s", cast(string) okp.message);
+	}
+
 	enforce!MYX(!okp.error, "Authentication failure: " ~ cast(string) okp.message);
 	conn._open = Connection.OpenState.authenticated;
 }
@@ -998,7 +1013,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	scope(failure) conn.kill();
 
 	PreparedServerInfo info;
-	
+
 	conn.sendCmd(CommandType.STMT_PREPARE, sql);
 	conn._fieldCount = 0;
 
@@ -1021,6 +1036,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	{
 		auto error = OKErrorPacket(packet);
 		enforcePacketOK(error);
+		logCritical("Unexpected failure: %s", cast(string) error.message);
 		assert(0); // FIXME: what now?
 	}
 	else
