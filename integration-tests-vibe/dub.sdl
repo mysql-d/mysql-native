@@ -5,5 +5,5 @@ copyright   "Copyright (c) 2011-2021 Steve Teale, James W. Oliphant, Simen Endsj
 authors     "Steve Teale" "James W. Oliphant" "Simen Endsjø" "Sönke Ludwig" "Sergey Shamov" "Nick Sabalausky" "Steven Schveighoffer"
 
 dependency "mysql-native:integration-tests" path="../"
-dependency "vibe-core" version="~>1.16.0"
+dependency "vibe-core" version="~>1.18.0"
 targetType "executable"
