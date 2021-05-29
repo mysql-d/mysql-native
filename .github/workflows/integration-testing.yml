@@ -148,6 +148,77 @@ jobs:
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
 
+  mysql56-tests:
+    name: MySQL 5.6 Tests ${{ matrix.compiler }}
+    strategy:
+      fail-fast: false
+      # max-parallel: 2
+      matrix:
+        compiler:
+          - dmd-latest
+          - ldc-latest
+          - dmd-2.095.1
+          - dmd-2.094.2
+          - ldc-1.25.1 # eq to dmd v2.095.1
+          - ldc-1.24.0 # eq to dmd v2.094.1
+
+    runs-on: ubuntu-20.04
+
+    services:
+      mysql:
+        image: mysql:5.6
+        ports: [3306]
+        env:
+          MYSQL_ROOT_PASSWORD: f48dfhw3Hd!Asah7i2aZ
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: passw0rd
+        # Set health checks to wait until mysql service has started
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 4
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install ${{ matrix.compiler }}
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.compiler }}
+
+      - name: Set up test connection string
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
+
+      - name: Run unittests with Vibe.d
+        run: |
+          dub run ":integration-tests-vibe"
+
+      - name: Run unittests with Phobos
+        run: |
+          dub run ":integration-tests-phobos"
+
+      - name: Run test connection utility
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          dub run ":testconn" -- "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      - name: Build The Example Project
+        working-directory: ./examples/homePage
+        run: dub build
+
+      - name: Run Example (MySQL 5.6)
+        working-directory: ./examples/homePage
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
   mariadb10-tests:
     name: MariaDB 10 Tests ${{ matrix.compiler }}
     strategy:
