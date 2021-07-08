@@ -30,6 +30,7 @@ import std.variant;
 
 import mysql.connection;
 import mysql.exceptions;
+import mysql.logger;
 import mysql.prepared;
 import mysql.result;
 
@@ -512,9 +513,15 @@ package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out u
 
 	// Send data
 	if(info.isPrepared)
+	{
+		logTrace("prepared SQL: %s", info.hStmt);
+
 		ProtocolPrepared.sendCommand(conn, info.hStmt, info.psh, info.inParams, info.psa);
+	}
 	else
 	{
+		logTrace("exec query: %s", info.sql);
+
 		conn.sendCmd(CommandType.QUERY, info.sql);
 		conn._fieldCount = 0;
 	}
@@ -526,6 +533,9 @@ package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out u
 	{
 		conn.resetPacket();
 		auto okp = OKErrorPacket(packet);
+
+		logError("packet error: %s %s", okp.error, okp.message);
+
 		enforcePacketOK(okp);
 		ra = okp.affected;
 		conn._serverStatus = okp.serverStatus;
@@ -989,6 +999,11 @@ body
 
 	auto packet = conn.getPacket();
 	auto okp = OKErrorPacket(packet);
+
+	if(okp.error) {
+		logError("Authentication failure: %s", cast(string) okp.message);
+	}
+
 	enforce!MYX(!okp.error, "Authentication failure: " ~ cast(string) okp.message);
 	conn._open = Connection.OpenState.authenticated;
 }
@@ -1022,6 +1037,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	{
 		auto error = OKErrorPacket(packet);
 		enforcePacketOK(error);
+		logCritical("Unexpected failure: %s", cast(string) error.message);
 		assert(0); // FIXME: what now?
 	}
 	else
