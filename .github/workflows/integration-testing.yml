@@ -45,7 +45,7 @@ jobs:
   #         --health-retries 4
 
   #   steps:
-  #    - uses: actions/checkout@v2
+  #    - uses: actions/checkout@v4
 
   #    - name: Install ${{ matrix.compiler }}
   #      uses: dlang-community/setup-dlang@v1
@@ -112,7 +112,7 @@ jobs:
           --health-retries 4
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install ${{ matrix.compiler }}
         uses: dlang-community/setup-dlang@v1
@@ -185,7 +185,7 @@ jobs:
           --health-retries 4
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install ${{ matrix.compiler }}
         uses: dlang-community/setup-dlang@v1
