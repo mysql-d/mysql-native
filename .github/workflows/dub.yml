@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ ubuntu-latest, windows-latest, macos-14 ]
         compiler:
           - dmd-latest
           - ldc-latest
@@ -30,6 +30,16 @@ jobs:
           - dmd-2.098.1
           - ldc-1.31.0 # eq to dmd v2.101.2
           - ldc-1.28.1 # eq to dmd v2.098.1
+        include:
+          - compiler: ldc-latest
+            os: macos-latest
+        exclude:
+          - compiler: dmd-latest
+            os: macos-14
+          - compiler: dmd-2.101.2
+            os: macos-14
+          - compiler: dmd-2.098.1
+            os: macos-14
     steps:
       - uses: actions/checkout@v3
 
@@ -38,16 +48,17 @@ jobs:
         with:
           compiler: ${{ matrix.compiler }}
 
-      - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.1.1
+      # Broken, try without it for now.
+      # - name: Upgrade dub dependencies
+        # uses: WebFreak001/dub-upgrade@v0.1.1
 
       - name: Build Library
         run: dub build --build=release --config=library
 
       # cache
-      - uses: WebFreak001/dub-upgrade@v0.1.1
-        if: startsWith(matrix.os, 'windows')
-        with: { store: true }
+      # - uses: WebFreak001/dub-upgrade@v0.1.1
+        # if: startsWith(matrix.os, 'windows')
+        # with: { store: true }
 
   # Older compiler versions
   build-older:
@@ -92,12 +103,12 @@ jobs:
         with:
           compiler: ${{ matrix.compiler }}
 
-      - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.1.1
+      # - name: Upgrade dub dependencies
+        # uses: WebFreak001/dub-upgrade@v0.1.1
 
       - name: Build Library
         run: dub build --build=release --config=library
 
       # cache
-      - uses: WebFreak001/dub-upgrade@v0.1.1
-        with: { store: true }
+      # - uses: WebFreak001/dub-upgrade@v0.1.1
+        # with: { store: true }

@@ -13,6 +13,7 @@ subPackage "./integration-tests"
 subPackage "./integration-tests-vibe"
 subPackage "./integration-tests-phobos"
 subPackage "./testconn"
+dflags "-preview=dip1000"
 
 configuration "library" {
 }

@@ -689,7 +689,7 @@ package(mysql) ubyte[] getPacket(Connection conn)
 	return packet;
 }
 
-package(mysql) void send(MySQLSocket _socket, const(ubyte)[] packet)
+package(mysql) void send(MySQLSocket _socket, scope const(ubyte)[] packet)
 in
 {
 	assert(packet.length > 4); // at least 1 byte more than header

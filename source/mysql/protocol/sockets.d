@@ -39,7 +39,7 @@ interface MySQLSocket
 @safe:
 	void close();
 	@property bool connected() const;
-	void read(ubyte[] dst);
+	void read(scope ubyte[] dst);
 	void write(const scope ubyte[] bytes);
 
 	void acquire();
@@ -78,7 +78,7 @@ class MySQLSocketPhobos : MySQLSocket
 		return socket.isAlive;
 	}
 
-	void read(ubyte[] dst)
+	void read(scope ubyte[] dst)
 	{
 		// Note: I'm a little uncomfortable with this line as it doesn't
 		// (and can't) update Connection._open. Not sure what can be done,
@@ -138,7 +138,7 @@ version(Have_vibe_core) {
 			return socket.connected;
 		}
 
-		void read(ubyte[] dst)
+		void read(scope ubyte[] dst)
 		{
 			socket.read(dst);
 		}
