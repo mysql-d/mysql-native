@@ -24,6 +24,7 @@ import mysql.protocol.packets;
 import mysql.types;
 import mysql.impl.result;
 import mysql.safe.commands : ColumnSpecialization, CSN;
+import std.datetime : DateTime;
 
 /++
 A struct to represent specializations of prepared statement parameters.
@@ -153,11 +154,19 @@ public:
 
 		enforce!MYX(index < _numParams, "Parameter index out of range.");
 
-		_inParams[index] = val;
+		static if ((is (T == DateTime)) || (is (T == const(DateTime)))|| (is (T == immutable(DateTime))))
+		{
+			_inParams[index] = DateTimeExt(val,0);
+		}
+		else
+		{
+			_inParams[index] = val;
+		}
 		psn.pIndex = index;
 		_psa[index] = psn;
 	}
 
+	
 	///ditto
 	void setArg(T)(size_t index, Nullable!T val, SafeParameterSpecialization psn = SPSN.init)
 	{

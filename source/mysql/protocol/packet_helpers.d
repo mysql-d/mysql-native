@@ -218,7 +218,7 @@ ubyte[] pack(in Date dt) pure nothrow
 }
 
 /++
-Function to extract a DateTime from a binary encoded row.
+Function to extract a DateTimeExt from a binary encoded row.
 
 Time/date structures are packed by the server into a byte sub-packet
 with a leading length byte, and a minimal number of bytes to embody the data.
@@ -227,20 +227,20 @@ Params: a = slice of a protocol packet beginning at the length byte for a
             chunk of DateTime data
 Returns: A populated or default initialized `std.datetime.DateTime` struct.
 +/
-DateTime toDateTime(in ubyte[] a) pure
+DateTimeExt toDateTime(in ubyte[] a) pure
 {
 	enforce!MYXProtocol(a.length, "Supplied byte array is zero length");
 	if (a[0] == 0)
-		return DateTime();
+		return DateTimeExt(DateTimeExt(),0);
 
 	enforce!MYXProtocol(a[0] >= 4, "Supplied ubyte[] is not long enough");
 	int year    = (a[2] << 8) + a[1];
 	int month   =  a[3];
 	int day     =  a[4];
-	DateTime dt;
+	DateTimeExt dt;
 	if (a[0] == 4)
 	{
-		dt = DateTime(year, month, day);
+		dt = DateTimeExt(DateTime(year, month, day),0);
 	}
 	else
 	{
@@ -248,7 +248,10 @@ DateTime toDateTime(in ubyte[] a) pure
 		int hour    = a[5];
 		int minute  = a[6];
 		int second  = a[7];
-		dt = DateTime(year, month, day, hour, minute, second);
+		int millisecond = 0;
+		if (a[0] >= 11)
+			millisecond = (a[11] << 24) + (a[10] << 16) + (a[9] << 8) + a[8];
+		dt = DateTimeExt(DateTime(year, month, day, hour, minute, second),millisecond);
 	}
 	return dt;
 }
@@ -261,7 +264,7 @@ Text representations of a DateTime are as in 2011-11-11 12:20:02
 Params: s = A string representation of the time difference.
 Returns: A populated or default initialized `std.datetime.DateTime` struct.
 +/
-DateTime toDateTime(const(char)[] s)
+DateTimeExt toDateTime(const(char)[] s)
 {
 	int year = parse!(ushort)(s);
 	enforce!MYXProtocol(s.skipOver("-"), `Expected: "-"`);
@@ -274,18 +277,18 @@ DateTime toDateTime(const(char)[] s)
 	int minute = parse!(ubyte)(s);
 	enforce!MYXProtocol(s.skipOver(":"), `Expected: ":"`);
 	int second = parse!(ubyte)(s);
-	return DateTime(year, month, day, hour, minute, second);
+	return DateTimeExt(DateTime(year, month, day, hour, minute, second),0);
 }
 
 /++
-Function to extract a DateTime from a ulong.
+Function to extract a DateTimeExt from a ulong.
 
 This is used to support the TimeStamp  struct.
 
 Params: x = A ulong e.g. 20111111122002UL.
 Returns: A populated `std.datetime.DateTime` struct.
 +/
-DateTime toDateTime(ulong x)
+DateTimeExt toDateTime(ulong x)
 {
 	int second = cast(int) (x%100);
 	x /= 100;
@@ -302,7 +305,7 @@ DateTime toDateTime(ulong x)
 	enforce!MYXProtocol(year >= 1970 &&  year < 2039, "Date/time out of range for 2 bit timestamp");
 	enforce!MYXProtocol(year != 2038 || (month < 1 && day < 19 && hour < 3 && minute < 14 && second < 7),
 			"Date/time out of range for 2 bit timestamp");
-	return DateTime(year, month, day, hour, minute, second);
+	return DateTimeExt(DateTime(year, month, day, hour, minute, second),0);
 }
 
 /++
@@ -314,11 +317,12 @@ and a minimal number of bytes to embody the data.
 Params: dt = `std.datetime.DateTime` struct.
 Returns: Packed ubyte[].
 +/
-ubyte[] pack(in DateTime dt) pure nothrow
+ubyte[] pack(in DateTimeExt dt) pure nothrow
 {
 	uint len = 1;
 	if (dt.year || dt.month || dt.day) len = 5;
 	if (dt.hour || dt.minute|| dt.second) len = 8;
+	if (dt.u_seconds) len = 12;
 	ubyte[] rv;
 	rv.length = len;
 	rv[0] =  cast(ubyte)(rv.length - 1); // num bytes
@@ -329,11 +333,18 @@ ubyte[] pack(in DateTime dt) pure nothrow
 		rv[3] = cast(ubyte)   dt.month;
 		rv[4] = cast(ubyte)   dt.day;
 	}
-	if(len == 8)
+	if(len >= 8)
 	{
 		rv[5] = cast(ubyte) dt.hour;
 		rv[6] = cast(ubyte) dt.minute;
 		rv[7] = cast(ubyte) dt.second;
+	}
+	if (len >= 12)
+	{
+		rv[8] = cast(ubyte)(dt.u_seconds & 0x0ff);
+		rv[9] = cast(ubyte)((dt.u_seconds >> 8) & 0x0ff);
+		rv[10] = cast(ubyte)((dt.u_seconds >> 16) & 0x0ff);
+		rv[11] = cast(ubyte)((dt.u_seconds >> 24) & 0x0ff);
 	}
 	return rv;
 }
@@ -435,7 +446,7 @@ do
 	return toDate(packet.consume(5));
 }
 
-DateTime consume(T:DateTime, ubyte N=T.sizeof)(ref ubyte[] packet) pure
+DateTimeExt consume(T:DateTimeExt, ubyte N=T.sizeof)(ref ubyte[] packet) pure
 in
 {
 	assert(packet.length);
@@ -445,7 +456,7 @@ do
 {
 	auto numBytes = packet.consume!ubyte();
 	if(numBytes == 0)
-		return DateTime();
+		return DateTimeExt(DateTime(),0);
 
 	enforce!MYXProtocol(numBytes >= 4, "Supplied packet is not large enough to store DateTime");
 
@@ -455,6 +466,7 @@ do
 	int hour    = 0;
 	int minute  = 0;
 	int second  = 0;
+	int u_seconds = 0;
 	if(numBytes > 4)
 	{
 		enforce!MYXProtocol(numBytes >= 7, "Supplied packet is not large enough to store a DateTime with TimeOfDay");
@@ -462,7 +474,11 @@ do
 		minute  = packet.consume!ubyte();
 		second  = packet.consume!ubyte();
 	}
-	return DateTime(year, month, day, hour, minute, second);
+	if (numBytes >= 11)
+	{
+		u_seconds = packet.consume!uint;
+	}
+	return DateTimeExt(DateTime(year, month, day, hour, minute, second),u_seconds);
 }
 
 
@@ -535,6 +551,8 @@ do
 T myto(T)(const(char)[] value)
 {
 	static if(is(T == DateTime))
+		return toDateTime(value).dt;
+	else static if(is(T == DateTimeExt))
 		return toDateTime(value);
 	else static if(is(T == Date))
 		return toDate(value);
@@ -575,8 +593,8 @@ SQLValue consumeBinaryValueIfComplete(T, int N=T.sizeof)(ref ubyte[] packet, boo
 {
 	SQLValue result;
 
-	// Length of DateTime packet is NOT DateTime.sizeof, it can be 1, 5 or 8 bytes
-	static if(is(T==DateTime))
+	// Length of DateTime packet is NOT DateTime.sizeof, it can be 1, 5 or 8 or 12 bytes
+	static if(is(T==DateTimeExt))
 		result.isIncomplete = packet.length < 1;
 	else
 		result.isIncomplete = packet.length < N;
@@ -669,7 +687,7 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
 		case SQLType.DOUBLE:
 			return packet.consumeIfComplete!double(binary, unsigned);
 		case SQLType.TIMESTAMP:
-			return packet.consumeIfComplete!DateTime(binary, unsigned);
+			return packet.consumeIfComplete!DateTimeExt(binary, unsigned);
 		case SQLType.TIME:
 			return packet.consumeIfComplete!TimeOfDay(binary, unsigned);
 		case SQLType.YEAR:
@@ -677,7 +695,7 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
 		case SQLType.DATE:
 			return packet.consumeIfComplete!Date(binary, unsigned);
 		case SQLType.DATETIME:
-			return packet.consumeIfComplete!DateTime(binary, unsigned);
+			return packet.consumeIfComplete!DateTimeExt(binary, unsigned);
 		case SQLType.VARCHAR:
 		case SQLType.ENUM:
 		case SQLType.SET:
