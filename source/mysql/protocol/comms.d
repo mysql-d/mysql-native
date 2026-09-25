@@ -475,7 +475,10 @@ Returns: true if there was a (possibly empty) result set.
 +/
 package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out ulong ra)
 {
-	scope(failure) conn.kill();
+	// an error packet from the server is a complete answer and leaves the connection
+	// consistent - only other failures (protocol, network) should kill it
+	bool serverError;
+	scope(failure) if (!serverError) conn.kill();
 
 	// Send data
 	ubyte[] packet;
@@ -501,6 +504,7 @@ package(mysql) bool execQueryImpl(Connection conn, ExecQueryImplInfo info, out u
 
 		if(okp.error) {
 			logError("packet error: %s", cast(string) okp.message);
+			serverError = true;
 		}
 
 		enforcePacketOK(okp);
@@ -865,7 +869,9 @@ package(mysql) ubyte[] makeToken(string password, ubyte[] authBuf)
 /// Get the next `mysql.result.Row` of a pending result set.
 package(mysql) SafeRow getNextRow(Connection conn)
 {
-	scope(failure) conn.kill();
+	// see execQueryImpl - an error packet should end the result set, not the connection
+	bool serverError;
+	scope(failure) if (!serverError) conn.kill();
 
 	if (conn._headersPending)
 	{
@@ -876,7 +882,11 @@ package(mysql) SafeRow getNextRow(Connection conn)
 	SafeRow rr;
 	packet = conn.getPacket();
 	if(packet.front == ResultPacketMarker.error)
+	{
+		serverError = true;
+		conn._rowsPending = conn._binaryPending = false;
 		throw new MYXReceived(OKErrorPacket(packet), __FILE__, __LINE__);
+	}
 
 	if (packet.isEOFPacket())
 	{
@@ -1003,7 +1013,9 @@ do
 // Register prepared statement
 package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[]) sql)
 {
-	scope(failure) conn.kill();
+	// see execQueryImpl - a refused PREPARE is a valid answer, not a broken connection
+	bool serverError;
+	scope(failure) if (!serverError) conn.kill();
 
 	PreparedServerInfo info;
 
@@ -1027,6 +1039,7 @@ package(mysql) PreparedServerInfo performRegister(Connection conn, const(char[])
 	else if(packet.front == ResultPacketMarker.error)
 	{
 		auto error = OKErrorPacket(packet);
+		serverError = true;
 		enforcePacketOK(error);
 		logCritical("Unexpected failure: %s", cast(string) error.message);
 		assert(0); // FIXME: what now?
