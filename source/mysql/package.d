@@ -30,8 +30,8 @@ $(TABLE
 $(TABLE
 	$(TR $(TH MySQL                                             ) $(TH D                    ))
 
-	$(TR $(TD VARCHAR, ENUM, SET, VARSTRING, STRING, NEWDECIMAL ) $(TD string               ))
-	$(TR $(TD TINYBLOB, MEDIUMBLOB, BLOB, LONGBLOB              ) $(TD ubyte[]              ))
+	$(TR $(TD VARCHAR, ENUM, SET, VARSTRING, STRING, DECIMAL, NEWDECIMAL, JSON ) $(TD string               ))
+	$(TR $(TD TINYBLOB, MEDIUMBLOB, BLOB, LONGBLOB, GEOMETRY    ) $(TD ubyte[]              ))
 	$(TR $(TD TINYTEXT, MEDIUMTEXT, TEXT, LONGTEXT              ) $(TD string               ))
 	$(TR $(TD other                                             ) $(TD unsupported (throws) ))
 )
