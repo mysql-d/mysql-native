@@ -64,7 +64,8 @@ debug(MYSQLN_TESTS)
 	}
 	catch (Exception x)
 	{
-		assert(x.msg.indexOf("Access denied") > 0);
+		// MySQL 8.4 removed COM_REFRESH: "Unknown command"
+		assert(x.msg.indexOf("Access denied") > 0 || x.msg.indexOf("Unknown command") > 0);
 	}
 	string stats = cn.serverStats();
 	assert(stats.indexOf("Uptime") == 0);
@@ -1029,8 +1030,9 @@ debug(MYSQLN_TESTS)
 		auto row = cn.queryRow(stmt).get;
 		assert(row.length == 4);
 		assert(row[0] == "utf8mb4");
-		// note, the second possibility is from mysql 8
-		assert(row[1] == "utf8mb4_general_ci" || row[1] == "utf8mb4_0900_ai_ci");
+		// note, the second possibility is from mysql 8, the third from MariaDB 11.4
+		assert(row[1] == "utf8mb4_general_ci" || row[1] == "utf8mb4_0900_ai_ci"
+			|| row[1] == "utf8mb4_uca1400_ai_ci");
 		assert(row[2] == "UTF-8 Unicode");
 		assert(row[3] == 4);
 	}
