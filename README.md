@@ -124,8 +124,15 @@ Additional notes
 This requires MySQL server v4.1.1 or later, or a MariaDB server. Older
 versions of MySQL server are obsolete, use known-insecure authentication,
 and are not supported by this package. Currently the github actions tests use
-MySQL 5.7 and MariaDB 10. MySQL 8 is supported with `mysql_native_password`
-authentication, but is not currently tested. Expect this to change in the future.
+MySQL 5.7, 8.0, 8.4 and 9, and MariaDB 10 and 11.4.
+
+Accounts may use the `mysql_native_password` or the `caching_sha2_password`
+authentication plugin (the default of MySQL 8 and later). Since connections are
+not encrypted, `caching_sha2_password` sends the password encrypted with the
+server's RSA public key whenever the server doesn't have the account in its
+cache (the first login after a server restart, for example). The client asks the
+server for that key, so this relies on the network path to the server being
+trusted, as unencrypted connections always do.
 
 Normally, MySQL clients connect to a server on the same machine via a Unix
 socket on *nix systems, and through a named pipe on Windows. Neither of these
