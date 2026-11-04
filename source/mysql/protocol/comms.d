@@ -1197,18 +1197,26 @@ package(mysql) void enableMultiStatements(Connection conn, bool on)
 
 private ubyte getDefaultCollation(string serverVersion)
 {
-	import std.array : array;
-	// MySQL >= 5.5.3 supports utf8mb4
-	const v = serverVersion
-		.splitter('.')
-		.map!(a => a.parse!ushort)
-		.array;
+	import std.ascii : isDigit;
 
-	if (v[0] < 5)
-		return 33; // Set utf8_general_ci as default
-	if (v[1] < 5)
-		return 33; // Set utf8_general_ci as default
-	if (v[2] < 3)
+	// The first three numbers of the version ("8.0.40", "5.5.5-10.0.7-MariaDB",
+	// "11.4.4-MariaDB-ubu2404").
+	uint[3] v;
+	auto rest = serverVersion;
+	foreach (i; 0 .. v.length)
+	{
+		while (rest.length > 0 && rest[0].isDigit)
+		{
+			v[i] = v[i] * 10 + (rest[0] - '0');
+			rest = rest[1 .. $];
+		}
+		if (rest.length == 0 || rest[0] != '.')
+			break;
+		rest = rest[1 .. $];
+	}
+
+	// MySQL >= 5.5.3 supports utf8mb4
+	if (v[0] < 5 || (v[0] == 5 && (v[1] < 5 || (v[1] == 5 && v[2] < 3))))
 		return 33; // Set utf8_general_ci as default
 
 	return 45; // Set utf8mb4_general_ci as default
@@ -1221,4 +1229,11 @@ unittest
 
 	// MariaDB: https://mariadb.com/kb/en/connection/#initial-handshake-packet
 	assert(getDefaultCollation("5.5.5-10.0.7-MariaDB") == 45);
+
+	assert(getDefaultCollation("5.1.73") == 33);
+	assert(getDefaultCollation("5.7.44") == 45);
+	assert(getDefaultCollation("8.0.40") == 45);
+	assert(getDefaultCollation("8.4.3") == 45);
+	assert(getDefaultCollation("9.1.0") == 45);
+	assert(getDefaultCollation("11.4.4-MariaDB-ubu2404") == 45);
 }
