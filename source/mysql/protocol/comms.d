@@ -33,6 +33,7 @@ import mysql.safe.prepared;
 import mysql.result;
 import mysql.types;
 
+import mysql.protocol.auth;
 import mysql.protocol.constants;
 import mysql.protocol.extra_types;
 import mysql.protocol.packet_helpers;
@@ -794,15 +795,11 @@ package(mysql) OKErrorPacket getCmdResponse(Connection conn, ubyte[] packet)
 	return okp;
 }
 
-package(mysql) ubyte[] buildAuthPacket(Connection conn, ubyte[] token)
-in
-{
-	assert(token.length == 20);
-}
-do
+package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, string plugin)
 {
 	ubyte[] packet;
-	packet.reserve(4/*header*/ + 4 + 4 + 1 + 23 + conn._user.length+1 + token.length+1 + conn._db.length+1);
+	packet.reserve(4/*header*/ + 4 + 4 + 1 + 23 + conn._user.length+1 + token.length+1 + conn._db.length+1
+			+ plugin.length+1);
 	packet.length = 4 + 4 + 4; // create room for the beginning headers that we set rather than append
 
 	// NOTE: we'll set the header last when we know the size
@@ -826,7 +823,7 @@ do
 
 	// Add our calculated authentication token as a length prefixed string.
 	assert(token.length <= ubyte.max);
-	if(conn._pwd.length == 0)  // Omit the token if the account has no password
+	if(token.length == 0)  // Omit the token if the account has no password
 		packet ~= 0;
 	else
 	{
@@ -840,26 +837,18 @@ do
 		packet ~= conn._db[i];
 	packet ~= 0; // \0
 
+	// The authentication plugin the token was made for
+	if(conn._cCaps & SvrCapFlags.PLUGIN_AUTH)
+	{
+		packet ~= cast(const(ubyte)[]) plugin;
+		packet ~= 0; // \0
+	}
+
 	// The server sent us a greeting with packet number 0, so we send the auth packet
 	// back with the next number.
 	packet.setPacketHeader(conn.pktNumber);
 	conn.bumpPacket();
 	return packet;
-}
-
-package(mysql) ubyte[] makeToken(string password, ubyte[] authBuf)
-{
-	auto pass1 = sha1Of(cast(const(ubyte)[])password);
-	auto pass2 = sha1Of(pass1);
-
-	SHA1 sha1;
-	sha1.start();
-	sha1.put(authBuf);
-	sha1.put(pass2);
-	auto result = sha1.finish();
-	foreach (size_t i; 0..20)
-		result[i] = result[i] ^ pass1[i];
-	return result.dup;
 }
 
 /// Get the next `mysql.result.Row` of a pending result set.
@@ -944,6 +933,15 @@ package(mysql) ubyte[] parseGreeting(Connection conn)
 	authBuf.length = 8+len; // cut to correct size
 	enforce!MYXProtocol(packet.consume!ubyte() == 0, "Excepted \\0 terminating scramble buf");
 
+	// The server's default authentication plugin (MySQL 5.5.7+, MariaDB); some
+	// old servers omit the terminating zero.
+	conn._authPlugin = null;
+	if((conn._sCaps & SvrCapFlags.PLUGIN_AUTH) && packet.length > 0)
+	{
+		auto nameLength = packet.countUntil(0);
+		conn._authPlugin = packet.consume!string(nameLength < 0 ? packet.length : nameLength).idup;
+	}
+
 	return authBuf;
 }
 
@@ -971,6 +969,11 @@ package(mysql) SvrCapFlags setClientFlags(SvrCapFlags serverCaps, SvrCapFlags ca
 	cCaps |= SvrCapFlags.PROTOCOL41;
 	cCaps |= SvrCapFlags.SECURE_CONNECTION;
 
+	// Pluggable authentication, needed for the authentication methods of
+	// MySQL 8 (caching_sha2_password), whenever the server supports it
+	if(serverCaps & SvrCapFlags.PLUGIN_AUTH)
+		cCaps |= SvrCapFlags.PLUGIN_AUTH;
+
 	return cCaps;
 }
 
@@ -985,19 +988,90 @@ out
 }
 do
 {
-	auto token = makeToken(conn._pwd, greeting);
-	auto authPacket = conn.buildAuthPacket(token);
+	scope(failure) conn.kill();
+
+	// The first response is made for the server's default plugin if we
+	// implement it, else for mysql_native_password. If the account uses a
+	// different plugin, the server asks to switch to it.
+	string plugin = nativePasswordPlugin;
+	if((conn._cCaps & SvrCapFlags.PLUGIN_AUTH) && isSupportedAuthPlugin(conn._authPlugin))
+		plugin = conn._authPlugin;
+	const(ubyte)[] nonce = greeting;
+
+	auto authPacket = conn.buildAuthPacket(authResponse(plugin, conn._pwd, nonce), plugin);
 	conn._socket.send(authPacket);
 
-	auto packet = conn.getPacket();
-	auto okp = OKErrorPacket(packet);
+	bool publicKeyRequested;
+	for(;;)
+	{
+		auto packet = conn.getPacket();
+		enforce!MYXProtocol(packet.length > 0, "Empty packet during authentication");
+		switch(packet[0])
+		{
+			case ResultPacketMarker.ok:
+				conn._open = Connection.OpenState.authenticated;
+				return;
 
-	if(okp.error) {
-		logError("Authentication failure: %s", cast(string) okp.message);
+			case ResultPacketMarker.error:
+				auto okp = OKErrorPacket(packet);
+				logError("Authentication failure: %s", cast(string) okp.message);
+				throw new MYX("Authentication failure: " ~ cast(string) okp.message);
+
+			case 0xFE: // Auth switch request: plugin name, then the plugin's data
+				enforce!MYX(packet.length > 1,
+					"The server asks for the pre-4.1 password authentication, which is not supported");
+				auto data = packet[1 .. $];
+				auto nameLength = data.countUntil(0);
+				enforce!MYXProtocol(nameLength >= 0, "Malformed authentication switch request");
+				plugin = cast(string) data[0 .. nameLength].idup;
+				enforce!MYX(isSupportedAuthPlugin(plugin),
+					"The server asks for the authentication plugin '" ~ plugin ~ "', which is not supported");
+				nonce = data[nameLength + 1 .. $];
+				if(nonce.length > 0 && nonce[$ - 1] == 0)
+					nonce = nonce[0 .. $ - 1];
+				conn.sendAuthData(authResponse(plugin, conn._pwd, nonce));
+				publicKeyRequested = false;
+				break;
+
+			case 0x01: // More data from the plugin (caching_sha2_password)
+				enforce!MYXProtocol(plugin == cachingSha2Plugin && packet.length > 1,
+					"Unexpected authentication data from the server");
+				if(publicKeyRequested)
+				{
+					// The server's RSA public key, in PEM form
+					conn.sendAuthData(encryptPassword(conn._pwd, nonce, cast(const(char)[]) packet[1 .. $]));
+					publicKeyRequested = false;
+				}
+				else if(packet.length == 2 && packet[1] == CachingSha2.fastAuthSuccess)
+				{
+					// The scramble matched the server's cache; an OK packet follows.
+				}
+				else if(packet.length == 2 && packet[1] == CachingSha2.performFullAuth)
+				{
+					// The server needs the password. Without TLS it goes encrypted
+					// with the server's RSA public key, which we ask for first.
+					static immutable ubyte[] request = [CachingSha2.requestPublicKey];
+					conn.sendAuthData(request);
+					publicKeyRequested = true;
+				}
+				else
+					throw new MYXProtocol("Unexpected caching_sha2_password data from the server",
+						__FILE__, __LINE__);
+				break;
+
+			default:
+				throw new MYXProtocol("Unexpected packet during authentication", __FILE__, __LINE__);
+		}
 	}
+}
 
-	enforce!MYX(!okp.error, "Authentication failure: " ~ cast(string) okp.message);
-	conn._open = Connection.OpenState.authenticated;
+// Sends one packet of authentication data (an empty packet is valid).
+private void sendAuthData(Connection conn, const(ubyte)[] data)
+{
+	auto header = new ubyte[4];
+	header.setPacketHeader(conn.pktNumber, cast(uint) data.length);
+	conn.bumpPacket();
+	conn._socket.send(header, data);
 }
 
 // Register prepared statement
