@@ -30,6 +30,7 @@ Should work on D compilers from 2.068 through to the latest release but the CI o
 In this document:
 * [API](#api)
 * [Basic example](#basic-example)
+* [TLS (SSL)](#tls-ssl)
 * [Additional notes](#additional-notes)
 * [Developers - How to run the test suite](#developers---how-to-run-the-test-suite)
 
@@ -118,6 +119,50 @@ void main(string[] args)
 }
 ```
 
+TLS (SSL)
+---------
+
+Connections can be encrypted with TLS. TLS support is optional: it comes from
+the [dbwire:tls](https://code.dlang.org/packages/dbwire) package, which
+mysql-native uses only when your project depends on it:
+
+```json
+"dependencies": {
+	"mysql-native": "...",
+	"dbwire:tls": "~>0.6"
+}
+```
+
+OpenSSL (1.1 or 3.x) is loaded at run time, so nothing extra is linked when
+your application is built; on macOS install Homebrew's `openssl@3`. Without the
+dependency, or if OpenSSL can't be loaded, asking for TLS throws an `MYX`.
+`dbwire:tls` needs a D frontend of 2.097 or later.
+
+Choose the mode in the connection string, or with `SSLOptions` (`mysql.ssl`)
+in the `Connection` and `MySQLPool` constructors:
+
+```d
+auto conn = new Connection("host=db.example.com;user=app;pwd=secret;db=app;sslmode=verify_identity");
+assert(conn.secure);
+```
+
+| `sslmode` | Meaning |
+|---|---|
+| `disabled` (default) | No TLS. |
+| `preferred` | TLS if the server and this build support it, else unencrypted. The certificate isn't verified. |
+| `required` | TLS, but the server certificate isn't verified. |
+| `verify_ca` | TLS, and the certificate must be signed by a trusted CA. |
+| `verify_identity` | Like `verify_ca`, and the certificate must also match the host name. |
+
+Other keys: `sslca` (PEM file with the CAs to trust; default: the system's
+store), `sslcert` and `sslkey` (client certificate and key, for accounts that
+require one) and `sslservername` (the name to verify instead of `host`).
+
+MySQL 5.7 and later and MariaDB 11.4 enable TLS out of the box with
+self-signed certificates, which only `preferred` and `required` accept. To
+verify such a server use `verify_ca` with its CA file (`ca.pem` in MySQL's
+data directory), or give it a certificate issued by a CA you trust.
+
 Additional notes
 ----------------
 
@@ -126,13 +171,14 @@ versions of MySQL server are obsolete, use known-insecure authentication,
 and are not supported by this package. Currently the github actions tests use
 MySQL 5.7, 8.0, 8.4 and 9, and MariaDB 10 and 11.4.
 
-Accounts may use the `mysql_native_password` or the `caching_sha2_password`
-authentication plugin (the default of MySQL 8 and later). Since connections are
-not encrypted, `caching_sha2_password` sends the password encrypted with the
-server's RSA public key whenever the server doesn't have the account in its
-cache (the first login after a server restart, for example). The client asks the
-server for that key, so this relies on the network path to the server being
-trusted, as unencrypted connections always do.
+Accounts may use the `mysql_native_password`, `caching_sha2_password` (the
+default of MySQL 8 and later) or `sha256_password` authentication plugin, and,
+over TLS only, `mysql_clear_password` (used by PAM and LDAP accounts).
+`caching_sha2_password` and `sha256_password` sometimes need the password itself,
+for example on the first login after a server restart. Over TLS it goes through
+the encrypted connection. Without TLS it is encrypted with the server's RSA
+public key, which the client asks the server for; this relies on the network
+path to the server being trusted, as unencrypted connections always do.
 
 Normally, MySQL clients connect to a server on the same machine via a Unix
 socket on *nix systems, and through a named pipe on Windows. Neither of these
@@ -175,6 +221,10 @@ but they will ONLY modify that one db schema. No other schema will be
 modified in any way.
 
 After you've configured the connection string, run the integration tests again.
+
+To run the integration tests over TLS, add an `sslmode` (and, for
+`verify_ca`, an `sslca`) to `testConnectionStr.txt`, e.g.
+`...;sslmode=verify_ca;sslca=/path/to/ca.pem`.
 
 The integration tests use
 [unit-threaded](https://code.dlang.org/packages/unit-threaded) which allows for

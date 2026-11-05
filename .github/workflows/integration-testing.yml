@@ -4,6 +4,7 @@ name: Integration Tests
 #  mysql:8.0, mysql:8.4, mysql:9
 #  mysql:5.7
 #  mariadb:10, mariadb:11.4
+# The integration tests also run over TLS (except on mariadb:10, which has no TLS by default).
 
 on:
   schedule:
@@ -93,6 +94,44 @@ jobs:
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
 
+      # TLS: the server's auto-generated certificate is verified with its CA
+      - name: Run unittests over TLS
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          docker cp ${{ job.services.mysql.id }}:/var/lib/mysql/ca.pem "$RUNNER_TEMP/server-ca.pem"
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=verify_ca;sslca=$RUNNER_TEMP/server-ca.pem" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"
+
+      # Full authentication (empty server cache) over TLS and with RSA, fast authentication
+      - name: Test authentication plugins
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          sql() { docker exec ${{ job.services.mysql.id }} mysql -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "$1"; }
+          cs="host=localhost;port=$MYSQL_PORT;db=testdb"
+          sql "CREATE USER sha2user IDENTIFIED WITH caching_sha2_password BY 'Sha2#Pass'; GRANT ALL ON testdb.* TO sha2user; FLUSH PRIVILEGES"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass;sslmode=required"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass;sslmode=required"
+          sql "FLUSH PRIVILEGES"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass"
+          if [ "${{ matrix.image }}" != "mysql:9" ]; then # MySQL 9 removed sha256_password
+            sql "CREATE USER sha256user IDENTIFIED WITH sha256_password BY 'Sha256#Pass'; GRANT ALL ON testdb.* TO sha256user"
+            dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass;sslmode=required"
+            dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass"
+          fi
+
+      # The example doesn't depend on dbwire:tls, so it has no TLS support
+      - name: Asking for TLS without dbwire:tls fails clearly
+        working-directory: ./examples/homePage
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          ! ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=required" > "$RUNNER_TEMP/out.txt" 2>&1
+          cat "$RUNNER_TEMP/out.txt"
+          grep -q "dbwire:tls" "$RUNNER_TEMP/out.txt"
+
   mysql57-tests:
     name: MySQL 5.7 Tests ${{ matrix.compiler }}
     strategy:
@@ -165,6 +204,26 @@ jobs:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      # TLS: the server's auto-generated certificate is verified with its CA
+      - name: Run unittests over TLS
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          docker cp ${{ job.services.mysql.id }}:/var/lib/mysql/ca.pem "$RUNNER_TEMP/server-ca.pem"
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=verify_ca;sslca=$RUNNER_TEMP/server-ca.pem" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"
+
+      - name: Test authentication plugins
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          sql() { docker exec ${{ job.services.mysql.id }} mysql -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "$1"; }
+          cs="host=localhost;port=$MYSQL_PORT;db=testdb"
+          sql "CREATE USER sha256user IDENTIFIED WITH sha256_password BY 'Sha256#Pass'; GRANT ALL ON testdb.* TO sha256user"
+          dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass;sslmode=required"
+          dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass"
 
   mariadb10-tests:
     name: ${{ matrix.image }} Tests ${{ matrix.compiler }}
@@ -241,3 +300,14 @@ jobs:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      # MariaDB 11.4 enables TLS with a certificate generated in memory, so it
+      # can't be verified; mariadb:10 has no TLS by default
+      - name: Run unittests over TLS
+        if: matrix.image == 'mariadb:11.4'
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=required" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"
