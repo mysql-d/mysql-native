@@ -824,7 +824,7 @@ package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, st
 	packet ~= 0; // \0
 
 	// Add our calculated authentication token as a length prefixed string.
-	assert(token.length <= ubyte.max);
+	enforce!MYX(token.length < 251, "The password is too long");
 	if(token.length == 0)  // Omit the token if the account has no password
 		packet ~= 0;
 	else
@@ -1052,10 +1052,12 @@ do
 		plugin = conn._authPlugin;
 	const(ubyte)[] nonce = greeting;
 
-	auto authPacket = conn.buildAuthPacket(authResponse(plugin, conn._pwd, nonce), plugin);
+	auto authPacket = conn.buildAuthPacket(authResponse(plugin, conn._pwd, nonce, conn._secure), plugin);
 	conn._socket.send(authPacket);
 
-	bool publicKeyRequested;
+	// Whether we asked for the server's RSA public key (sha256_password asks
+	// in its first response when there's no TLS)
+	bool publicKeyRequested = requestsPublicKey(conn, plugin);
 	for(;;)
 	{
 		auto packet = conn.getPacket();
@@ -1083,14 +1085,21 @@ do
 				nonce = data[nameLength + 1 .. $];
 				if(nonce.length > 0 && nonce[$ - 1] == 0)
 					nonce = nonce[0 .. $ - 1];
-				conn.sendAuthData(authResponse(plugin, conn._pwd, nonce));
-				publicKeyRequested = false;
+				conn.sendAuthData(authResponse(plugin, conn._pwd, nonce, conn._secure));
+				publicKeyRequested = requestsPublicKey(conn, plugin);
 				break;
 
-			case 0x01: // More data from the plugin (caching_sha2_password)
-				enforce!MYXProtocol(plugin == cachingSha2Plugin && packet.length > 1,
+			case 0x01: // More data from the plugin (caching_sha2_password, sha256_password)
+				enforce!MYXProtocol((plugin == cachingSha2Plugin || plugin == sha256Plugin) && packet.length > 1,
 					"Unexpected authentication data from the server");
-				if(publicKeyRequested)
+				if(plugin == sha256Plugin)
+				{
+					// The server's RSA public key, which the first response asked for
+					enforce!MYXProtocol(publicKeyRequested, "Unexpected sha256_password data from the server");
+					conn.sendAuthData(encryptPassword(conn._pwd, nonce, cast(const(char)[]) packet[1 .. $]));
+					publicKeyRequested = false;
+				}
+				else if(publicKeyRequested)
 				{
 					// The server's RSA public key, in PEM form
 					conn.sendAuthData(encryptPassword(conn._pwd, nonce, cast(const(char)[]) packet[1 .. $]));
@@ -1123,6 +1132,13 @@ do
 				throw new MYXProtocol("Unexpected packet during authentication", __FILE__, __LINE__);
 		}
 	}
+}
+
+// Whether the first response of `plugin` asks for the server's RSA public key
+// (see authResponse).
+private bool requestsPublicKey(Connection conn, string plugin)
+{
+	return plugin == sha256Plugin && !conn._secure && conn._pwd.length > 0;
 }
 
 // Sends one packet of authentication data (an empty packet is valid).
