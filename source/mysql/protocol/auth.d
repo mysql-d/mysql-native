@@ -14,6 +14,11 @@ $(LI `caching_sha2_password`: the SHA-256 based default of MySQL 8.0 and
      encrypted with the server's RSA public key (RSA-OAEP with SHA-1), which
      the client asks the server for. Over TLS it goes in clear through the
      encrypted channel.)
+$(LI `sha256_password`: the older SHA-256 method of MySQL 5.6 to 8.x. It
+     always sends the password: in clear over TLS, otherwise encrypted with the
+     server's RSA public key.)
+$(LI `mysql_clear_password`: sends the password in clear, for accounts
+     checked by an external service (PAM, LDAP). Allowed only over TLS.)
 )
 
 See_Also:
@@ -38,6 +43,8 @@ package(mysql) enum AuthPlugin : ubyte
 	unsupported,           /// Any other plugin (or none); never sent.
 	mysql_native_password, ///
 	caching_sha2_password, ///
+	sha256_password,       ///
+	mysql_clear_password,  /// Allowed only over TLS.
 }
 
 /// The plugin called `name` in the protocol, or `AuthPlugin.unsupported`.
@@ -48,6 +55,9 @@ package(mysql) AuthPlugin authPluginFromName(const(char)[] name) pure nothrow @n
 			return __traits(getMember, AuthPlugin, member);
 	return AuthPlugin.unsupported;
 }
+
+/// What `sha256_password` sends to ask for the server's RSA public key.
+package(mysql) enum ubyte sha256RequestPublicKey = 1;
 
 /// Bytes the client and the server exchange in `caching_sha2_password`.
 package(mysql) enum CachingSha2 : ubyte
@@ -60,10 +70,19 @@ package(mysql) enum CachingSha2 : ubyte
 /++
 The first authentication response of plugin `plugin` for `password`, given the
 server's random `nonce` (the 20-byte scramble, without the trailing zero byte).
+`secure` tells whether the connection is encrypted with TLS.
 
-An empty password gives an empty response for both plugins.
+$(UL
+$(LI `mysql_native_password`, `caching_sha2_password`: the scramble; empty
+     for an empty password.)
+$(LI `sha256_password`: a zero byte for an empty password, the password and
+     a zero byte over TLS, otherwise a request for the server's public key.)
+$(LI `mysql_clear_password`: the password and a zero byte; throws `MYX`
+     without TLS.)
+)
 +/
-package(mysql) ubyte[] authResponse(AuthPlugin plugin, const(char)[] password, const(ubyte)[] nonce)
+package(mysql) ubyte[] authResponse(AuthPlugin plugin, const(char)[] password, const(ubyte)[] nonce,
+	bool secure)
 in
 {
 	assert(plugin != AuthPlugin.unsupported);
@@ -76,6 +95,16 @@ do
 			return cachingSha2Token(password, nonce);
 		case AuthPlugin.mysql_native_password:
 			return nativePasswordToken(password, nonce);
+		case AuthPlugin.sha256_password:
+			if (password.length == 0)
+				return [0];
+			if (secure)
+				return clearPassword(password);
+			return [sha256RequestPublicKey];
+		case AuthPlugin.mysql_clear_password:
+			enforce!MYX(secure, "The server asks for the password in clear (mysql_clear_password), "
+				~ "which is allowed only over TLS (see SSLOptions)");
+			return clearPassword(password);
 		case AuthPlugin.unsupported:
 			assert(0);
 	}
@@ -435,8 +464,30 @@ unittest
 
 	assert(authPluginFromName("caching_sha2_password") == AuthPlugin.caching_sha2_password);
 	assert(authPluginFromName("mysql_native_password") == AuthPlugin.mysql_native_password);
+	assert(authPluginFromName("sha256_password") == AuthPlugin.sha256_password);
+	assert(authPluginFromName("mysql_clear_password") == AuthPlugin.mysql_clear_password);
 	assert(authPluginFromName("client_ed25519") == AuthPlugin.unsupported);
 	assert(AuthPlugin.caching_sha2_password.to!string == "caching_sha2_password");
+}
+
+// First responses of sha256_password and mysql_clear_password
+unittest
+{
+	import std.exception : assertThrown;
+
+	auto nonce = cast(const(ubyte)[]) "abcdefghij0123456789";
+
+	// The scramble plugins don't depend on TLS
+	assert(authResponse(AuthPlugin.caching_sha2_password, "secret", nonce, true) == cachingSha2Token("secret", nonce));
+	assert(authResponse(AuthPlugin.mysql_native_password, "secret", nonce, true) == nativePasswordToken("secret", nonce));
+
+	assert(authResponse(AuthPlugin.sha256_password, "", nonce, false) == [0]);
+	assert(authResponse(AuthPlugin.sha256_password, "", nonce, true) == [0]);
+	assert(authResponse(AuthPlugin.sha256_password, "pw", nonce, true) == ['p', 'w', 0]);
+	assert(authResponse(AuthPlugin.sha256_password, "pw", nonce, false) == [sha256RequestPublicKey]);
+
+	assert(authResponse(AuthPlugin.mysql_clear_password, "pw", nonce, true) == ['p', 'w', 0]);
+	assertThrown!MYX(authResponse(AuthPlugin.mysql_clear_password, "pw", nonce, false));
 }
 
 // RSA-OAEP round trip with a 1024-bit test key: encrypt, then decrypt with the
