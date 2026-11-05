@@ -113,55 +113,58 @@ private:
 		string query = procs ? "SHOW PROCEDURE STATUS WHERE db='": "SHOW FUNCTION STATUS WHERE db='";
 		query ~= _con.currentDB ~ "'";
 
-		auto rs = _con.query(query).array;
+		// Columns are matched by name: MySQL 8.4 inserted a Language column
+		auto range = _con.query(query);
+		auto names = range.colNames.dup;
+		auto rs = range.array;
 		MySQLProcedure[] pa;
 		pa.length = rs.length;
 		foreach (size_t i; 0..rs.length)
 		{
 			MySQLProcedure foo;
 			Row r = rs[i];
-			foreach (int j; 0..11)
+			foreach (size_t j, name; names)
 			{
 				if (r.isNull(j))
 					continue;
 				auto value = r[j].toString();
-				switch (j)
+				switch (name)
 				{
-					case 0:
+					case "Db":
 						foo.db = value;
 						break;
-					case 1:
+					case "Name":
 						foo.name = value;
 						break;
-					case 2:
+					case "Type":
 						foo.type = value;
 						break;
-					case 3:
+					case "Definer":
 						foo.definer = value;
 						break;
-					case 4:
+					case "Modified":
 						foo.modified = r[j].get!(DateTime);
 						break;
-					case 5:
+					case "Created":
 						foo.created = r[j].get!(DateTime);
 						break;
-					case 6:
+					case "Security_type":
 						foo.securityType = value;
 						break;
-					case 7:
+					case "Comment":
 						foo.comment = value;
 						break;
-					case 8:
+					case "character_set_client":
 						foo.charSetClient = value;
 						break;
-					case 9:
+					case "collation_connection":
 						foo.collationConnection = value;
 						break;
-					case 10:
+					case "Database Collation":
 						foo.collationDB = value;
 						break;
 					default:
-						assert(0);
+						break; // a column of a newer server version
 				}
 			}
 			pa[i] = foo;

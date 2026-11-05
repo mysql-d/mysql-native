@@ -168,6 +168,10 @@ package(mysql):
 	string  _serverVersion;
 
 	string _host, _user, _pwd, _db;
+
+	// The server's default authentication plugin, from its greeting (empty if
+	// the server doesn't support pluggable authentication).
+	string _authPlugin;
 	ushort _port;
 
 	MySQLSocketType _socketType;

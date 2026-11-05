@@ -30,6 +30,16 @@ jobs:
           - dmd-2.098.1
           - ldc-1.31.0 # eq to dmd v2.101.2
           - ldc-1.28.1 # eq to dmd v2.098.1
+        # macos-latest is arm64: setup-dlang has no DMD for it, LDC 1.28 has no
+        # arm64 build and the dub of LDC 1.31 crashes there. Test DMD on Intel.
+        exclude:
+          - { os: macos-latest, compiler: dmd-latest }
+          - { os: macos-latest, compiler: dmd-2.101.2 }
+          - { os: macos-latest, compiler: dmd-2.098.1 }
+          - { os: macos-latest, compiler: ldc-1.31.0 }
+          - { os: macos-latest, compiler: ldc-1.28.1 }
+        include:
+          - { os: macos-15-intel, compiler: dmd-latest }
     steps:
       - uses: actions/checkout@v3
 
@@ -39,15 +49,10 @@ jobs:
           compiler: ${{ matrix.compiler }}
 
       - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.1.1
+        uses: WebFreak001/dub-upgrade@v0.2.0 # saves the package cache in its post step
 
       - name: Build Library
         run: dub build --build=release --config=library
-
-      # cache
-      - uses: WebFreak001/dub-upgrade@v0.1.1
-        if: startsWith(matrix.os, 'windows')
-        with: { store: true }
 
   # Older compiler versions
   build-older:
@@ -93,11 +98,7 @@ jobs:
           compiler: ${{ matrix.compiler }}
 
       - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.1.1
+        uses: WebFreak001/dub-upgrade@v0.2.0 # saves the package cache in its post step
 
       - name: Build Library
         run: dub build --build=release --config=library
-
-      # cache
-      - uses: WebFreak001/dub-upgrade@v0.1.1
-        with: { store: true }
