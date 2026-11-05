@@ -44,6 +44,7 @@ void testMySql(string connStr)
 //   writefln("With currents stats : %s", c.serverStats());
 	auto caps = c.serverCapabilities;
 	writefln("MySQL Server %s with capabilities (%b):", c.serverVersion, caps);
+	writefln("Connection is %s", c.secure ? "encrypted (TLS)" : "not encrypted");
 	if(caps && SvrCapFlags.OLD_LONG_PASSWORD)
 		writeln("\tLong passwords");
 	if(caps && SvrCapFlags.FOUND_NOT_AFFECTED)
@@ -85,7 +86,14 @@ void testMySql(string connStr)
 	writefln("Found %s databases", dbList.length);
 	foreach( db; dbList )
 	{
-		c.selectDB(db);
+		// MySQL 8 lists performance_schema even to users who may not open it
+		try
+			c.selectDB(db);
+		catch(MYXReceived e)
+		{
+			writefln("Database '%s' cannot be opened: %s", db, e.msg);
+			continue;
+		}
 		auto curTables = md.tables();
 		writefln("Database '%s' has %s table%s.", db, curTables.length, curTables.length == 1?"":"s");
 		foreach(tbls ; curTables)

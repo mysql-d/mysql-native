@@ -52,7 +52,7 @@ interface MySQLSocket
 class MySQLSocketPhobos : MySQLSocket
 {
 @safe:
-	private PlainPhobosSocket socket;
+	package(mysql) PlainPhobosSocket socket;
 
 	/// The socket should already be open
 	this(PlainPhobosSocket socket)
@@ -109,7 +109,7 @@ version(Have_vibe_core) {
 	class MySQLSocketVibeD : MySQLSocket
 	{
 		@safe:
-		private PlainVibeDSocket socket;
+		package(mysql) PlainVibeDSocket socket;
 
 		/// The socket should already be open
 		this(PlainVibeDSocket socket)

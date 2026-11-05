@@ -29,6 +29,8 @@ import mysql.impl.result;
 import mysql.impl.prepared;
 import mysql.types;
 
+public import mysql.ssl;
+
 @safe:
 
 version(Have_vibe_core)
@@ -73,6 +75,27 @@ unittest
 	assert(preparedPlaceholderArgs(2) == "(?,?)");
 	assert(preparedPlaceholderArgs(1) == "(?)");
 	assert(preparedPlaceholderArgs(0) == "()");
+}
+
+@("parseConnectionString")
+unittest
+{
+	auto a = Connection.parseConnectionString("host=db; user=joe ;pwd=pass123;db=app");
+	assert(a == ["db", "joe", "pass123", "app", "3306"]);
+
+	SSLOptions ssl;
+	a = Connection.parseConnectionString("host=db;port=3307;sslmode=verify_ca;sslca=/etc/ca.pem;"
+		~ "sslcert=client.pem;sslkey=client.key;sslservername=db.example.com", ssl);
+	assert(a == ["db", null, null, null, "3307"]);
+	assert(ssl.mode == SSLMode.verifyCA);
+	assert(ssl.ca == "/etc/ca.pem" && ssl.cert == "client.pem" && ssl.key == "client.key");
+	assert(ssl.serverName == "db.example.com");
+
+	// The overload without SSLOptions accepts the TLS keys too
+	assert(Connection.parseConnectionString("host=db;sslmode=required")[0] == "db");
+
+	assertThrown!MYX(Connection.parseConnectionString("host=db;sslmode=yes"));
+	assertThrown!MYX(Connection.parseConnectionString("host=db;ssl=1"));
 }
 
 /// Per-connection info from the server about a registered prepared statement.
@@ -168,7 +191,15 @@ package(mysql):
 	string  _serverVersion;
 
 	string _host, _user, _pwd, _db;
+
+	// The server's default authentication plugin, from its greeting (empty if
+	// the server doesn't support pluggable authentication).
+	string _authPlugin;
 	ushort _port;
+
+	// TLS settings, and whether the current connection is encrypted.
+	SSLOptions _ssl;
+	bool _secure;
 
 	MySQLSocketType _socketType;
 
@@ -238,6 +269,7 @@ package(mysql):
 		kill(); // Ensure internal state gets reset
 
 		resetPacket();
+		_secure = false;
 		final switch(_socketType)
 		{
 			case MySQLSocketType.phobos:
@@ -267,6 +299,7 @@ package(mysql):
 
 		_clientCapabilities = clientCapabilities;
 		_cCaps = setClientFlags(_sCaps, clientCapabilities);
+		this.negotiateSSL();
 		this.authenticate(greeting);
 	}
 
@@ -385,48 +418,55 @@ public:
 		pwd = User's password.
 		db = Desired initial database.
 		capFlags = The set of flag bits from the server's capabilities that the client requires
+		ssl = TLS settings; see `mysql.ssl`. With a connection string, use its
+			`sslmode`, `sslca`, `sslcert`, `sslkey` and `sslservername` keys instead.
 	+/
 	//After the connection is created, and the initial invitation is received from the server
 	//client preferences can be set, and authentication can then be attempted.
-	this(string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
+	this(string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags,
+		SSLOptions ssl = SSLOptions.init)
 	{
 		version(Have_vibe_core)
 			enum defaultSocketType = MySQLSocketType.vibed;
 		else
 			enum defaultSocketType = MySQLSocketType.phobos;
 
-		this(defaultSocketType, host, user, pwd, db, port, capFlags);
+		this(defaultSocketType, host, user, pwd, db, port, capFlags, ssl);
 	}
 
 	///ditto
-	this(MySQLSocketType socketType, string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
+	this(MySQLSocketType socketType, string host, string user, string pwd, string db, ushort port = 3306,
+		SvrCapFlags capFlags = defaultClientFlags, SSLOptions ssl = SSLOptions.init)
 	{
 		version(Have_vibe_core) {} else
 			enforce!MYX(socketType != MySQLSocketType.vibed, "Cannot use Vibe.d sockets without -version=Have_vibe_core");
 
 		this(socketType, &defaultOpenSocketPhobos, &defaultOpenSocketVibeD,
-			host, user, pwd, db, port, capFlags);
+			host, user, pwd, db, port, capFlags, ssl);
 	}
 
 	///ditto
 	this(OpenSocketCallbackPhobos openSocket,
-		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
+		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags,
+		SSLOptions ssl = SSLOptions.init)
 	{
-		this(MySQLSocketType.phobos, openSocket, null, host, user, pwd, db, port, capFlags);
+		this(MySQLSocketType.phobos, openSocket, null, host, user, pwd, db, port, capFlags, ssl);
 	}
 
 	version(Have_vibe_core)
 	///ditto
 	this(OpenSocketCallbackVibeD openSocket,
-		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
+		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags,
+		SSLOptions ssl = SSLOptions.init)
 	{
-		this(MySQLSocketType.vibed, null, openSocket, host, user, pwd, db, port, capFlags);
+		this(MySQLSocketType.vibed, null, openSocket, host, user, pwd, db, port, capFlags, ssl);
 	}
 
 	///ditto
 	private this(MySQLSocketType socketType,
 		OpenSocketCallbackPhobos openSocketPhobos, OpenSocketCallbackVibeD openSocketVibeD,
-		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags)
+		string host, string user, string pwd, string db, ushort port = 3306, SvrCapFlags capFlags = defaultClientFlags,
+		SSLOptions ssl = SSLOptions.init)
 	in
 	{
 		final switch(socketType)
@@ -448,6 +488,7 @@ public:
 		_pwd = pwd;
 		_db = db;
 		_port = port;
+		_ssl = ssl;
 
 		_openSocketPhobos = openSocketPhobos;
 		_openSocketVibeD  = openSocketVibeD;
@@ -460,30 +501,34 @@ public:
 	//client preferences can be set, and authentication can then be attempted.
 	this(string cs, SvrCapFlags capFlags = defaultClientFlags)
 	{
-		string[] a = parseConnectionString(cs);
-		this(a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags);
+		SSLOptions ssl;
+		string[] a = parseConnectionString(cs, ssl);
+		this(a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags, ssl);
 	}
 
 	///ditto
 	this(MySQLSocketType socketType, string cs, SvrCapFlags capFlags = defaultClientFlags)
 	{
-		string[] a = parseConnectionString(cs);
-		this(socketType, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags);
+		SSLOptions ssl;
+		string[] a = parseConnectionString(cs, ssl);
+		this(socketType, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags, ssl);
 	}
 
 	///ditto
 	this(OpenSocketCallbackPhobos openSocket, string cs, SvrCapFlags capFlags = defaultClientFlags)
 	{
-		string[] a = parseConnectionString(cs);
-		this(openSocket, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags);
+		SSLOptions ssl;
+		string[] a = parseConnectionString(cs, ssl);
+		this(openSocket, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags, ssl);
 	}
 
 	version(Have_vibe_core)
 	///ditto
 	this(OpenSocketCallbackVibeD openSocket, string cs, SvrCapFlags capFlags = defaultClientFlags)
 	{
-		string[] a = parseConnectionString(cs);
-		this(openSocket, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags);
+		SSLOptions ssl;
+		string[] a = parseConnectionString(cs, ssl);
+		this(openSocket, a[0], a[1], a[2], a[3], to!ushort(a[4]), capFlags, ssl);
 	}
 
 	/++
@@ -493,6 +538,22 @@ public:
 	@property bool closed()
 	{
 		return _open == OpenState.notConnected || !_socket.connected;
+	}
+
+	/++
+	Whether the connection to the server is encrypted with TLS.
+
+	See_Also: `mysql.ssl`
+	+/
+	@property bool secure() const pure nothrow
+	{
+		return _secure;
+	}
+
+	/// The TLS settings the connection was created with.
+	@property SSLOptions sslOptions() const pure nothrow
+	{
+		return _ssl;
 	}
 
 	/++
@@ -583,10 +644,21 @@ public:
 	$(LI [4]: port)
 	)
 
+	The TLS keys `sslmode`, `sslca`, `sslcert`, `sslkey` and `sslservername`
+	(see `mysql.ssl`) are accepted too; the overload with an `SSLOptions`
+	parameter returns them.
+
 	(TODO: The connection string needs work to allow for semicolons in its parts!)
 	+/
 	//TODO: Replace the return value with a proper struct.
 	static string[] parseConnectionString(string cs)
+	{
+		SSLOptions ignored;
+		return parseConnectionString(cs, ignored);
+	}
+
+	///ditto
+	static string[] parseConnectionString(string cs, out SSLOptions ssl)
 	{
 		string[] rv;
 		rv.length = 5;
@@ -614,6 +686,21 @@ public:
 					break;
 				case "port":
 					rv[4] = val;
+					break;
+				case "sslmode":
+					ssl.mode = parseSSLMode(val);
+					break;
+				case "sslca":
+					ssl.ca = val;
+					break;
+				case "sslcert":
+					ssl.cert = val;
+					break;
+				case "sslkey":
+					ssl.key = val;
+					break;
+				case "sslservername":
+					ssl.serverName = val;
 					break;
 				default:
 					throw new MYX("Bad connection string: " ~ cs, __FILE__, __LINE__);

@@ -1,9 +1,10 @@
 name: Integration Tests
 
 # MySQL Native should work with the following database versions:
-#  mysql:8 (Broken on MySQL 8 - see: https://github.com/mysql-d/mysql-native/issues/230)
+#  mysql:8.0, mysql:8.4, mysql:9
 #  mysql:5.7
-#  mariadb:10
+#  mariadb:10, mariadb:11.4
+# The integration tests also run over TLS (except on mariadb:10, which has no TLS by default).
 
 on:
   schedule:
@@ -16,66 +17,120 @@ on:
   workflow_dispatch:
 
 jobs:
-  # mysql8-tests:
-  #   name: MySQL 8 Tests ${{ matrix.compiler }}
-  #   strategy:
-  #     fail-fast: false
-  #     # max-parallel: 2
-  #     matrix:
-  #       compiler:
-  #         - dmd-latest
-  #         - ldc-latest
+  mysql8-tests:
+    name: ${{ matrix.image }} Tests ${{ matrix.compiler }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - mysql:8.0
+          - mysql:8.4
+          - mysql:9
+        compiler:
+          - dmd-latest
+          - ldc-latest
+          - ldc-1.27.0 # eq to dmd v2.097.2
 
-  #   runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
-  #   services:
-  #     mysql:
-  #       image: mysql:8
-  #       ports: [3306]
-  #       env:
-  #         MYSQL_ROOT_PASSWORD: f48dfhw3Hd!Asah7i2aZ
-  #         MYSQL_DATABASE: testdb
-  #         MYSQL_USER: testuser
-  #         MYSQL_PASSWORD: passw0rd
-  #       # Set health checks to wait until mysql service has started
-  #       options: >-
-  #         --health-cmd "mysqladmin ping"
-  #         --health-interval 10s
-  #         --health-timeout 3s
-  #         --health-retries 4
+    services:
+      mysql:
+        image: ${{ matrix.image }}
+        ports: [3306]
+        env:
+          MYSQL_ROOT_PASSWORD: f48dfhw3Hd!Asah7i2aZ
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: passw0rd
+        # Set health checks to wait until mysql service has started
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 4
 
-  #   steps:
-  #    - uses: actions/checkout@v2
+    steps:
+      - uses: actions/checkout@v3
 
-  #    - name: Install ${{ matrix.compiler }}
-  #      uses: dlang-community/setup-dlang@v1
-  #      with:
-  #        compiler: ${{ matrix.compiler }}
+      - name: Install ${{ matrix.compiler }}
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.compiler }}
 
-  #    - name: Set up test connection string
-  #      env:
-  #        MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
-  #      run: |
-  #        echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
+      # MySQL 8 enables binary logging by default; without this setting creating
+      # stored functions needs the SUPER privilege (see issue #112)
+      - name: Allow stored functions with binary logging
+        run: |
+          docker exec ${{ job.services.mysql.id }} mysql -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "SET PERSIST log_bin_trust_function_creators = 1"
 
-  #    - name: Run unittests with Vibe.d
-  #      run: |
-  #        dub run ":integration-tests-vibe"
+      - name: Set up test connection string
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb" > testConnectionStr.txt
 
-  #    - name: Run unittests with Phobos
-  #      run: |
-  #        dub run ":integration-tests-phobos"
+      - name: Run unittests with Vibe.d
+        run: |
+          dub run ":integration-tests-vibe"
 
-  #    - name: Build The Example Project
-  #      working-directory: ./examples/homePage
-  #      run: dub build
+      - name: Run unittests with Phobos
+        run: |
+          dub run ":integration-tests-phobos"
 
-  #    - name: Run Example (MySQL 8)
-  #      working-directory: ./examples/homePage
-  #      env:
-  #        MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
-  #      run: |
-  #        ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+      - name: Run test connection utility
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          dub run ":testconn" -- "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      - name: Build The Example Project
+        working-directory: ./examples/homePage
+        run: dub build
+
+      - name: Run Example (${{ matrix.image }})
+        working-directory: ./examples/homePage
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      # TLS: the server's auto-generated certificate is verified with its CA
+      - name: Run unittests over TLS
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          docker cp ${{ job.services.mysql.id }}:/var/lib/mysql/ca.pem "$RUNNER_TEMP/server-ca.pem"
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=verify_ca;sslca=$RUNNER_TEMP/server-ca.pem" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"
+
+      # Full authentication (empty server cache) over TLS and with RSA, fast authentication
+      - name: Test authentication plugins
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          sql() { docker exec ${{ job.services.mysql.id }} mysql -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "$1"; }
+          cs="host=localhost;port=$MYSQL_PORT;db=testdb"
+          sql "CREATE USER sha2user IDENTIFIED WITH caching_sha2_password BY 'Sha2#Pass'; GRANT ALL ON testdb.* TO sha2user; FLUSH PRIVILEGES"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass;sslmode=required"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass;sslmode=required"
+          sql "FLUSH PRIVILEGES"
+          dub run -q ":testconn" -- "$cs;user=sha2user;pwd=Sha2#Pass"
+          if [ "${{ matrix.image }}" != "mysql:9" ]; then # MySQL 9 removed sha256_password
+            sql "CREATE USER sha256user IDENTIFIED WITH sha256_password BY 'Sha256#Pass'; GRANT ALL ON testdb.* TO sha256user"
+            dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass;sslmode=required"
+            dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass"
+          fi
+
+      # The example doesn't depend on dbwire:tls, so it has no TLS support
+      - name: Asking for TLS without dbwire:tls fails clearly
+        working-directory: ./examples/homePage
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          ! ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=required" > "$RUNNER_TEMP/out.txt" 2>&1
+          cat "$RUNNER_TEMP/out.txt"
+          grep -q "dbwire:tls" "$RUNNER_TEMP/out.txt"
 
   mysql57-tests:
     name: MySQL 5.7 Tests ${{ matrix.compiler }}
@@ -93,7 +148,7 @@ jobs:
           - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.0 # eq to dmd v2.097.2
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     services:
       mysql:
@@ -150,12 +205,35 @@ jobs:
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
 
+      # TLS: the server's auto-generated certificate is verified with its CA
+      - name: Run unittests over TLS
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          docker cp ${{ job.services.mysql.id }}:/var/lib/mysql/ca.pem "$RUNNER_TEMP/server-ca.pem"
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=verify_ca;sslca=$RUNNER_TEMP/server-ca.pem" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"
+
+      - name: Test authentication plugins
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          sql() { docker exec ${{ job.services.mysql.id }} mysql -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "$1"; }
+          cs="host=localhost;port=$MYSQL_PORT;db=testdb"
+          sql "CREATE USER sha256user IDENTIFIED WITH sha256_password BY 'Sha256#Pass'; GRANT ALL ON testdb.* TO sha256user"
+          dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass;sslmode=required"
+          dub run -q ":testconn" -- "$cs;user=sha256user;pwd=Sha256#Pass"
+
   mariadb10-tests:
-    name: MariaDB 10 Tests ${{ matrix.compiler }}
+    name: ${{ matrix.image }} Tests ${{ matrix.compiler }}
     strategy:
       fail-fast: false
       # max-parallel: 2
       matrix:
+        image:
+          - mariadb:10
+          - mariadb:11.4
         compiler:
           - dmd-latest
           - ldc-latest
@@ -166,11 +244,11 @@ jobs:
           - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.0 # eq to dmd v2.097.2
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     services:
       mysql:
-        image: mariadb:10
+        image: ${{ matrix.image }}
         ports: [3306]
         env:
           MYSQL_ROOT_PASSWORD: f48dfhw3Hd!Asah7i2aZ
@@ -179,7 +257,7 @@ jobs:
           MYSQL_PASSWORD: passw0rd
         # Set health checks to wait until mysql service has started
         options: >-
-          --health-cmd "mysqladmin ping"
+          --health-cmd "mariadb-admin ping"
           --health-interval 10s
           --health-timeout 3s
           --health-retries 4
@@ -216,9 +294,20 @@ jobs:
         working-directory: ./examples/homePage
         run: dub build
 
-      - name: Run Example (mariadb 10)
+      - name: Run Example (${{ matrix.image }})
         working-directory: ./examples/homePage
         env:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           ./example "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      # MariaDB 11.4 enables TLS with a certificate generated in memory, so it
+      # can't be verified; mariadb:10 has no TLS by default
+      - name: Run unittests over TLS
+        if: matrix.image == 'mariadb:11.4'
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          echo "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb;sslmode=required" > testConnectionStr.txt
+          dub run ":integration-tests-vibe"
+          dub run ":integration-tests-phobos"

@@ -29,6 +29,8 @@ enum SvrCapFlags: uint
 	SECURE_CONNECTION   = 0x0_8000, /// 4.1+ authentication
 	MULTI_STATEMENTS    = 0x1_0000, /// Multiple statement support
 	MULTI_RESULTS       = 0x2_0000, /// Multiple result set support
+	PS_MULTI_RESULTS    = 0x4_0000, /// Multiple result sets from prepared statements
+	PLUGIN_AUTH         = 0x8_0000, /// Pluggable authentication (needed for MySQL 8's `caching_sha2_password`)
 }
 
 /++
