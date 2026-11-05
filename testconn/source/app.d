@@ -44,6 +44,7 @@ void testMySql(string connStr)
 //   writefln("With currents stats : %s", c.serverStats());
 	auto caps = c.serverCapabilities;
 	writefln("MySQL Server %s with capabilities (%b):", c.serverVersion, caps);
+	writefln("Connection is %s", c.secure ? "encrypted (TLS)" : "not encrypted");
 	if(caps && SvrCapFlags.OLD_LONG_PASSWORD)
 		writeln("\tLong passwords");
 	if(caps && SvrCapFlags.FOUND_NOT_AFFECTED)

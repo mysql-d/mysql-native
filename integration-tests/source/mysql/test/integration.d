@@ -14,6 +14,7 @@ import std.typecons;
 import std.variant;
 
 import mysql.safe.connection : Connection;
+import mysql.ssl;
 import mysql.exceptions;
 import mysql.metadata;
 import mysql.protocol.constants;
@@ -1265,10 +1266,15 @@ unittest
 		chdir(saveDir);
 	chdir("examples/homePage");
 
+	// The example doesn't depend on dbwire:tls, so it connects without the
+	// TLS keys of the test connection string.
+	auto a = Connection.parseConnectionString(testConnectionStr);
+	auto exampleCnStr = "host=" ~ a[0] ~ ";port=" ~ a[4] ~ ";user=" ~ a[1] ~ ";pwd=" ~ a[2] ~ ";db=" ~ a[3];
+
 	// Compile & run example.d
 	// The -q is important, it prevents dub from displaying the full
 	// connection string including password.
-	auto exitCode = spawnProcess(["dub", "-q", "--", testConnectionStr]).wait;
+	auto exitCode = spawnProcess(["dub", "-q", "--", exampleCnStr]).wait;
 	assert(exitCode == 0);
 }
 
@@ -1286,4 +1292,46 @@ unittest
 	auto result = cn.queryRow(sql);
 	assert(!result.isNull);
 	assert(result.get.length == 26*26);
+}
+
+// TLS (see mysql.ssl). Run the whole suite over TLS by adding sslmode to
+// testConnectionStr.txt and building the runner's "tls" configuration.
+@("tls")
+debug(MYSQLN_TESTS)
+unittest
+{
+	SSLOptions ssl;
+	Connection.parseConnectionString(testConnectionStr, ssl);
+
+	{
+		mixin(scopedCn);
+		import mysql.safe.commands;
+
+		if(ssl.mode == SSLMode.disabled)
+			assert(!cn.secure);
+		else if(ssl.mode != SSLMode.preferred)
+			assert(cn.secure);
+
+		// The server agrees on whether the connection is encrypted
+		auto cipher = cn.queryRow("SHOW SESSION STATUS LIKE 'Ssl_cipher'");
+		assert(!cipher.isNull);
+		assert((cipher.get[1].toString().length > 0) == cn.secure);
+	}
+
+	static if(sslSupported)
+	{
+		// Without a CA file the servers' self-signed certificates aren't trusted
+		if(ssl.ca.length == 0)
+			assertThrown!MYX(createCn(testConnectionStr ~ ";sslmode=verify_identity"));
+	}
+	else
+	{
+		auto e = collectException!MYX(createCn(testConnectionStr ~ ";sslmode=required"));
+		assert(e !is null && e.msg.canFind("dbwire:tls"));
+
+		// preferred falls back to an unencrypted connection
+		auto cn = createCn(testConnectionStr ~ ";sslmode=preferred");
+		scope(exit) cn.close();
+		assert(!cn.secure);
+	}
 }

@@ -6,3 +6,5 @@ authors     "Steve Teale" "James W. Oliphant" "Simen Endsjø" "Sönke Ludwig" "S
 
 dependency "mysql-native:integration-tests" path="../"
 targetType "executable"
+// TLS support (see mysql.ssl): the tests run over TLS when testConnectionStr.txt has an sslmode
+dependency "dbwire:tls" version="~>0.6"
