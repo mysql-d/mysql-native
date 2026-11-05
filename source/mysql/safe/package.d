@@ -19,4 +19,5 @@ public import mysql.escape;
 public import mysql.exceptions;
 public import mysql.metadata;
 public import mysql.protocol.constants : SvrCapFlags;
+public import mysql.ssl;
 public import mysql.types;
