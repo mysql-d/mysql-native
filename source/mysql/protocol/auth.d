@@ -12,7 +12,8 @@ $(LI `caching_sha2_password`: the SHA-256 based default of MySQL 8.0 and
      is enough ("fast authentication"). Otherwise the server asks for the
      password itself ("full authentication"). Without TLS the password is
      encrypted with the server's RSA public key (RSA-OAEP with SHA-1), which
-     the client asks the server for.)
+     the client asks the server for. Over TLS it goes in clear through the
+     encrypted channel.)
 )
 
 See_Also:
@@ -63,6 +64,12 @@ package(mysql) ubyte[] authResponse(const(char)[] plugin, const(char)[] password
 	if (plugin == nativePasswordPlugin)
 		return nativePasswordToken(password, nonce);
 	throw new MYX("Authentication plugin '" ~ plugin.idup ~ "' is not supported");
+}
+
+/// The password followed by a zero byte, as sent in clear over TLS.
+package(mysql) ubyte[] clearPassword(const(char)[] password) pure nothrow
+{
+	return cast(ubyte[]) password.dup ~ cast(ubyte) 0;
 }
 
 /++

@@ -109,6 +109,7 @@ version(IncludeMySQLPool)
 			string m_database;
 			ushort m_port;
 			SvrCapFlags m_capFlags;
+			SSLOptions m_ssl;
 			static if(isSafe)
 				alias NewConnectionDelegate = void delegate(Connection) @safe;
 			else
@@ -128,10 +129,14 @@ version(IncludeMySQLPool)
 		///
 		/// The optional `onNewConnection` param allows you to set a callback
 		/// which will be run every time a new connection is created.
+		///
+		/// TLS: pass `ssl` (see `mysql.ssl`), or use the `sslmode`, `sslca`,
+		/// `sslcert`, `sslkey` and `sslservername` keys of the connection string.
 		this(string host, string user, string password, string database,
 			ushort port = 3306, uint maxConcurrent = (uint).max,
 			SvrCapFlags capFlags = defaultClientFlags,
-			NewConnectionDelegate onNewConnection = null)
+			NewConnectionDelegate onNewConnection = null,
+			SSLOptions ssl = SSLOptions.init)
 		{
 			m_host = host;
 			m_user = user;
@@ -139,6 +144,7 @@ version(IncludeMySQLPool)
 			m_database = database;
 			m_port = port;
 			m_capFlags = capFlags;
+			m_ssl = ssl;
 			m_onNewConnection = onNewConnection;
 			m_pool = new ConnectionPool!Connection(&createConnection);
 		}
@@ -161,8 +167,10 @@ version(IncludeMySQLPool)
 		this(string connStr, uint maxConcurrent = (uint).max, SvrCapFlags capFlags = defaultClientFlags,
 			NewConnectionDelegate onNewConnection = null)
 		{
-			auto parts = Connection.parseConnectionString(connStr);
-			this(parts[0], parts[1], parts[2], parts[3], to!ushort(parts[4]), capFlags, onNewConnection);
+			SSLOptions ssl;
+			auto parts = Connection.parseConnectionString(connStr, ssl);
+			this(parts[0], parts[1], parts[2], parts[3], to!ushort(parts[4]), maxConcurrent, capFlags,
+				onNewConnection, ssl);
 		}
 
 		///ditto
@@ -237,7 +245,7 @@ version(IncludeMySQLPool)
 
 		private Connection createConnection()
 		{
-			auto conn = new Connection(m_host, m_user, m_password, m_database, m_port, m_capFlags);
+			auto conn = new Connection(m_host, m_user, m_password, m_database, m_port, m_capFlags, m_ssl);
 
 			if(m_onNewConnection)
 				m_onNewConnection(conn);

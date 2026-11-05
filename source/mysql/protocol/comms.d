@@ -31,6 +31,7 @@ import mysql.exceptions;
 import mysql.logger;
 import mysql.safe.prepared;
 import mysql.result;
+import mysql.ssl;
 import mysql.types;
 
 import mysql.protocol.auth;
@@ -39,6 +40,7 @@ import mysql.protocol.extra_types;
 import mysql.protocol.packet_helpers;
 import mysql.protocol.packets;
 import mysql.protocol.sockets;
+import mysql.protocol.tls;
 
 @safe:
 
@@ -974,7 +976,59 @@ package(mysql) SvrCapFlags setClientFlags(SvrCapFlags serverCaps, SvrCapFlags ca
 	if(serverCaps & SvrCapFlags.PLUGIN_AUTH)
 		cCaps |= SvrCapFlags.PLUGIN_AUTH;
 
+	// Set by negotiateSSL only when TLS is actually started
+	cCaps &= ~SvrCapFlags.SSL;
+
 	return cCaps;
+}
+
+/++
+Starts TLS if the connection's `SSLOptions` ask for it: sends the SSLRequest
+packet and performs the TLS handshake, so that the handshake response with the
+credentials goes encrypted.
+
+Throws: `MYX` if TLS is required but this build or the server doesn't support
+it, or if the handshake fails.
++/
+package(mysql) void negotiateSSL(Connection conn)
+{
+	scope(failure) conn.kill();
+
+	const mode = conn._ssl.mode;
+	if(mode == SSLMode.disabled)
+		return;
+
+	const serverSupport = (conn._sCaps & SvrCapFlags.SSL) != 0;
+	if(mode == SSLMode.preferred && !(serverSupport && sslSupported))
+		return;
+
+	enforce!MYX(sslSupported, "TLS (SSLOptions.mode/sslmode) needs the dbwire:tls package: "
+		~ "add \"dbwire:tls\" to your project's dependencies");
+	enforce!MYX(serverSupport, "The server does not support TLS connections");
+
+	conn._cCaps |= SvrCapFlags.SSL;
+	conn._socket.send(buildSSLRequestPacket(conn));
+	version(Have_dbwire_tls)
+	{
+		conn._socket = startTLS(conn._socket, conn._host, conn._ssl);
+		conn._secure = true;
+	}
+}
+
+/++
+The SSLRequest packet: the first 32 bytes of the handshake response
+(capabilities with the SSL flag, maximum packet size, character set and 23
+zero bytes).
++/
+package(mysql) ubyte[] buildSSLRequestPacket(Connection conn)
+{
+	auto packet = new ubyte[4 + 32];
+	conn._cCaps.packInto(packet[4 .. 8]);
+	1.packInto(packet[8 .. 12]); // Same maximum packet length as buildAuthPacket
+	packet[12] = getDefaultCollation(conn._serverVersion);
+	packet.setPacketHeader(conn.pktNumber);
+	conn.bumpPacket();
+	return packet;
 }
 
 package(mysql) void authenticate(Connection conn, ubyte[] greeting)
@@ -1048,11 +1102,17 @@ do
 				}
 				else if(packet.length == 2 && packet[1] == CachingSha2.performFullAuth)
 				{
-					// The server needs the password. Without TLS it goes encrypted
-					// with the server's RSA public key, which we ask for first.
-					static immutable ubyte[] request = [CachingSha2.requestPublicKey];
-					conn.sendAuthData(request);
-					publicKeyRequested = true;
+					// The server needs the password. Over TLS it goes in clear;
+					// otherwise encrypted with the server's RSA public key,
+					// which we ask for first.
+					if(conn._secure)
+						conn.sendAuthData(clearPassword(conn._pwd));
+					else
+					{
+						static immutable ubyte[] request = [CachingSha2.requestPublicKey];
+						conn.sendAuthData(request);
+						publicKeyRequested = true;
+					}
 				}
 				else
 					throw new MYXProtocol("Unexpected caching_sha2_password data from the server",
