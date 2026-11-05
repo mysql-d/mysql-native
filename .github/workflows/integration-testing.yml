@@ -3,7 +3,7 @@ name: Integration Tests
 # MySQL Native should work with the following database versions:
 #  mysql:8.0, mysql:8.4, mysql:9
 #  mysql:5.7
-#  mariadb:10, mariadb:11.4
+#  mariadb:10, mariadb:11.4, mariadb:11.8
 
 on:
   schedule:
@@ -184,6 +184,12 @@ jobs:
           - ldc-1.31.0 # eq to dmd v2.101.2
           - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.0 # eq to dmd v2.097.2
+        # parsec authentication needs MariaDB 11.6 or later
+        include:
+          - image: mariadb:11.8
+            compiler: dmd-latest
+          - image: mariadb:11.8
+            compiler: ldc-latest
 
     runs-on: ubuntu-latest
 
@@ -230,6 +236,24 @@ jobs:
           MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           dub run ":testconn" -- "host=localhost;port=$MYSQL_PORT;user=testuser;pwd=passw0rd;db=testdb"
+
+      - name: Test the MariaDB authentication plugins
+        env:
+          MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          sql() { docker exec ${{ job.services.mysql.id }} mariadb -uroot -p'f48dfhw3Hd!Asah7i2aZ' -e "$1"; }
+          cs="host=localhost;port=$MYSQL_PORT;db=testdb"
+          refused() { if dub run -q ":testconn" -- "$1"; then echo "a wrong password was accepted"; exit 1; fi; }
+          sql "INSTALL SONAME 'auth_ed25519'"
+          sql "CREATE USER eduser IDENTIFIED VIA ed25519 USING PASSWORD('Ed25519#Pass'); GRANT ALL ON testdb.* TO eduser"
+          dub run -q ":testconn" -- "$cs;user=eduser;pwd=Ed25519#Pass"
+          refused "$cs;user=eduser;pwd=wrong"
+          if [ "${{ matrix.image }}" = "mariadb:11.8" ]; then
+            sql "INSTALL SONAME 'auth_parsec'"
+            sql "CREATE USER parsecuser IDENTIFIED VIA parsec USING PASSWORD('Parsec#Pass'); GRANT ALL ON testdb.* TO parsecuser"
+            dub run -q ":testconn" -- "$cs;user=parsecuser;pwd=Parsec#Pass"
+            refused "$cs;user=parsecuser;pwd=wrong"
+          fi
 
       - name: Build The Example Project
         working-directory: ./examples/homePage

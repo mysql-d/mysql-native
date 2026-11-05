@@ -13,11 +13,19 @@ $(LI `caching_sha2_password`: the SHA-256 based default of MySQL 8.0 and
      password itself ("full authentication"). Without TLS the password is
      encrypted with the server's RSA public key (RSA-OAEP with SHA-1), which
      the client asks the server for.)
+$(LI `client_ed25519`: MariaDB's `ed25519` plugin. The client signs the
+     server's 32-byte nonce with an Ed25519 key whose secret is the password
+     itself (SHA-512 of the password instead of a 32-byte seed).)
+$(LI `parsec`: MariaDB 11.6 and later. The client asks for the account's
+     salt, makes an Ed25519 seed from the password with PBKDF2-HMAC-SHA512,
+     and signs the server's nonce followed by a nonce of its own.)
 )
 
 See_Also:
 $(LINK https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase.html),
-$(LINK https://dev.mysql.com/doc/dev/mysql-server/latest/page_caching_sha2_authentication_exchanges.html)
+$(LINK https://dev.mysql.com/doc/dev/mysql-server/latest/page_caching_sha2_authentication_exchanges.html),
+$(LINK https://mariadb.com/kb/en/authentication-plugin-ed25519/),
+$(LINK https://mariadb.com/kb/en/authentication-plugin-parsec/)
 +/
 module mysql.protocol.auth;
 
@@ -25,6 +33,7 @@ import std.digest.sha;
 import std.exception : enforce;
 
 import mysql.exceptions;
+import mysql.protocol.ed25519;
 
 @safe:
 
@@ -33,6 +42,15 @@ package(mysql) enum nativePasswordPlugin = "mysql_native_password";
 
 /// Name of the `caching_sha2_password` authentication plugin.
 package(mysql) enum cachingSha2Plugin = "caching_sha2_password";
+
+/// Name of MariaDB's `ed25519` authentication plugin, client side.
+package(mysql) enum ed25519Plugin = "client_ed25519";
+
+/// Name of MariaDB's `parsec` authentication plugin.
+package(mysql) enum parsecPlugin = "parsec";
+
+/// Length of the nonces of `client_ed25519` and `parsec`.
+package(mysql) enum ed25519NonceLength = 32;
 
 /// Bytes the client and the server exchange in `caching_sha2_password`.
 package(mysql) enum CachingSha2 : ubyte
@@ -47,6 +65,17 @@ Whether this client implements the authentication plugin `name`.
 +/
 package(mysql) bool isSupportedAuthPlugin(const(char)[] name) pure nothrow
 {
+	return name == nativePasswordPlugin || name == cachingSha2Plugin
+		|| name == ed25519Plugin || name == parsecPlugin;
+}
+
+/++
+Whether plugin `name` can answer the 20-byte scramble of the server's
+greeting. The MariaDB plugins need a 32-byte nonce, which the server sends
+when it switches to them.
++/
+package(mysql) bool answersGreeting(const(char)[] name) pure nothrow
+{
 	return name == nativePasswordPlugin || name == cachingSha2Plugin;
 }
 
@@ -54,7 +83,9 @@ package(mysql) bool isSupportedAuthPlugin(const(char)[] name) pure nothrow
 The first authentication response of plugin `plugin` for `password`, given the
 server's random `nonce` (the 20-byte scramble, without the trailing zero byte).
 
-An empty password gives an empty response for both plugins.
+An empty password gives an empty response for `mysql_native_password` and
+`caching_sha2_password`. `parsec` answers with an empty packet, which asks for
+the account's salt (see `parsecResponse`).
 +/
 package(mysql) ubyte[] authResponse(const(char)[] plugin, const(char)[] password, const(ubyte)[] nonce)
 {
@@ -62,6 +93,16 @@ package(mysql) ubyte[] authResponse(const(char)[] plugin, const(char)[] password
 		return cachingSha2Token(password, nonce);
 	if (plugin == nativePasswordPlugin)
 		return nativePasswordToken(password, nonce);
+	if (plugin == ed25519Plugin)
+	{
+		enforce!MYXProtocol(nonce.length == ed25519NonceLength, "Malformed client_ed25519 nonce");
+		return ed25519Sign(cast(const(ubyte)[]) password, nonce)[].dup;
+	}
+	if (plugin == parsecPlugin)
+	{
+		enforce!MYXProtocol(nonce.length == ed25519NonceLength, "Malformed parsec nonce");
+		return [];
+	}
 	throw new MYX("Authentication plugin '" ~ plugin.idup ~ "' is not supported");
 }
 
@@ -127,6 +168,74 @@ package(mysql) ubyte[] encryptPassword(const(char)[] password, const(ubyte)[] no
 	ubyte[20] seed;
 	secureRandom(seed[]);
 	return rsaOaepSha1Encrypt(key, message, seed[]);
+}
+
+/// The highest `parsec` iteration factor accepted (1024 << 8 iterations).
+package(mysql) enum parsecMaxIterationFactor = 8;
+
+/++
+The second `parsec` response: `clientNonce` (32 random bytes), then the
+signature of `serverNonce` followed by `clientNonce`, with the Ed25519 seed
+`PBKDF2-HMAC-SHA512(password, salt, 1024 << factor, 32)`.
+
+`extSalt` is what the server sends after the empty first response: the letter
+`P` (the key derivation, PBKDF2), the iteration factor, and the salt.
+
+Throws: `MYXProtocol` if `extSalt` is malformed or asks for more than
+`1024 << parsecMaxIterationFactor` iterations.
++/
+package(mysql) ubyte[] parsecResponse(const(char)[] password, const(ubyte)[] serverNonce,
+	const(ubyte)[] extSalt, const(ubyte)[] clientNonce)
+in
+{
+	assert(clientNonce.length == ed25519NonceLength);
+}
+do
+{
+	enforce!MYXProtocol(serverNonce.length == ed25519NonceLength, "Malformed parsec nonce");
+	enforce!MYXProtocol(extSalt.length > 2 && extSalt[0] == 'P',
+		"The server sent a parsec salt this client does not understand");
+	enforce!MYXProtocol(extSalt[1] <= parsecMaxIterationFactor,
+		"The server asks for too many parsec iterations");
+
+	auto seed = pbkdf2HmacSha512(cast(const(ubyte)[]) password, extSalt[2 .. $], 1024 << extSalt[1], 32);
+	scope(exit) seed[] = 0;
+	auto message = serverNonce ~ clientNonce;
+	return clientNonce ~ ed25519Sign(seed, message)[];
+}
+
+/++
+PBKDF2 with HMAC-SHA-512 (RFC 8018, section 5.2): `length` bytes of key from
+`password` and `salt` with `iterations` rounds.
++/
+package(mysql) ubyte[] pbkdf2HmacSha512(const(ubyte)[] password, const(ubyte)[] salt,
+	uint iterations, size_t length)
+{
+	import std.digest.hmac : HMAC;
+
+	auto mac = HMAC!SHA512(password);
+	auto key = new ubyte[length];
+	for (uint block = 1, pos = 0; pos < length; block++)
+	{
+		ubyte[4] index = [cast(ubyte)(block >> 24), cast(ubyte)(block >> 16),
+			cast(ubyte)(block >> 8), cast(ubyte) block];
+		mac.start();
+		mac.put(salt);
+		mac.put(index[]);
+		auto u = mac.finish();
+		auto t = u;
+		foreach (i; 1 .. iterations)
+		{
+			mac.start();
+			mac.put(u[]);
+			u = mac.finish();
+			t[] ^= u[];
+		}
+		const n = length - pos < t.length ? length - pos : t.length;
+		key[pos .. pos + n] = t[0 .. n];
+		pos += n;
+	}
+	return key;
 }
 
 /// An RSA public key: big-endian modulus and exponent, without leading zeros.
@@ -404,7 +513,66 @@ unittest
 	assert(toHexString!(LetterCase.lower)(cachingSha2Token("secret", nonce))
 			== "bd7d89fc1c297010da753d08822e9e48d3eafbb6e68e1f9b403be12dc5687a40");
 	assert(isSupportedAuthPlugin("caching_sha2_password"));
-	assert(!isSupportedAuthPlugin("client_ed25519"));
+	assert(isSupportedAuthPlugin("client_ed25519") && isSupportedAuthPlugin("parsec"));
+	assert(!answersGreeting("client_ed25519") && !answersGreeting("parsec"));
+	assert(!isSupportedAuthPlugin("auth_gssapi_client"));
+}
+
+// MariaDB: the public keys the server stores for these passwords (CREATE USER
+// ... IDENTIFIED VIA ed25519 USING PASSWORD('...'), 11.4 and 11.8), and a
+// signature checked with Python's cryptography package.
+unittest
+{
+	import std.base64 : Base64;
+	import std.digest : toHexString, LetterCase;
+	import std.exception : assertThrown;
+
+	assert(Base64.encode(ed25519PublicKey(cast(const(ubyte)[]) "secret")[])
+			== "ZIgUREUg5PVgQ6LskhXmO+eZLS0nC8be6HPjYWR4YJY=");
+	assert(Base64.encode(ed25519PublicKey(cast(const(ubyte)[]) "")[])
+			== "4LH+dBF+G5W2CKTyId8xR3SyDqZoQjUNUVNxx8aWbG4=");
+
+	ubyte[32] nonce;
+	foreach (i, ref b; nonce)
+		b = cast(ubyte) i;
+	assert(toHexString!(LetterCase.lower)(authResponse(ed25519Plugin, "secret", nonce[]))
+		== "546c3e9311d19ee389d1ae5d945821bfe459423910136f16b3bd2ae89fd7d63b"
+		~ "449e689f4be812891a85b8f999076446d92adb83d0707215aaa60b5a23220907");
+	assertThrown!MYXProtocol(authResponse(ed25519Plugin, "secret", nonce[0 .. 20]));
+	assert(authResponse(parsecPlugin, "secret", nonce[]).length == 0);
+}
+
+// MariaDB parsec: the account created with PASSWORD('secret') is stored as
+// P0:MHhrP+s8DyJl6STv1Gx0kAzU:GVx6DOAOpyMe29SQseip1yz2+WwuIgVzIEuDs8lXS80
+// (factor, salt, public key); the signature was checked with Python.
+unittest
+{
+	import std.base64 : Base64;
+	import std.digest : toHexString, LetterCase;
+	import std.exception : assertThrown;
+
+	const salt = Base64.decode("MHhrP+s8DyJl6STv1Gx0kAzU");
+	const seed = pbkdf2HmacSha512(cast(const(ubyte)[]) "secret", salt, 1024, 32);
+	assert(toHexString!(LetterCase.lower)(seed)
+			== "df411adb70c050fb89cc2c94e1c91d9648badb0ebeaebaf758f8a6f919627b15");
+	assert(Base64.encode(ed25519PublicKey(seed)[]) == "GVx6DOAOpyMe29SQseip1yz2+WwuIgVzIEuDs8lXS80=");
+
+	ubyte[32] serverNonce, clientNonce;
+	foreach (i; 0 .. 32)
+	{
+		serverNonce[i] = cast(ubyte) i;
+		clientNonce[i] = cast(ubyte)(0xA0 + i);
+	}
+	const extSalt = cast(const(ubyte)[]) "P\0" ~ salt;
+	auto response = parsecResponse("secret", serverNonce[], extSalt, clientNonce[]);
+	assert(response.length == 96 && response[0 .. 32] == clientNonce[]);
+	assert(toHexString!(LetterCase.lower)(response[32 .. $])
+		== "0e58a6720e7bec32e22f9524553288d842aae2669d324e9144663b6b63b69929"
+		~ "28084d5e4d79c4159ae0406aaa3bd27878569c5db3c9292934d7c7b7eedfa10c");
+
+	assertThrown!MYXProtocol(parsecResponse("secret", serverNonce[], cast(const(ubyte)[]) "X\0" ~ salt, clientNonce[]));
+	assertThrown!MYXProtocol(parsecResponse("secret", serverNonce[], cast(const(ubyte)[]) "P\x09" ~ salt, clientNonce[]));
+	assertThrown!MYXProtocol(parsecResponse("secret", serverNonce[], cast(const(ubyte)[]) "P\0", clientNonce[]));
 }
 
 // RSA-OAEP round trip with a 1024-bit test key: encrypt, then decrypt with the

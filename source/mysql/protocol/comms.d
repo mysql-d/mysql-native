@@ -994,7 +994,7 @@ do
 	// implement it, else for mysql_native_password. If the account uses a
 	// different plugin, the server asks to switch to it.
 	string plugin = nativePasswordPlugin;
-	if((conn._cCaps & SvrCapFlags.PLUGIN_AUTH) && isSupportedAuthPlugin(conn._authPlugin))
+	if((conn._cCaps & SvrCapFlags.PLUGIN_AUTH) && answersGreeting(conn._authPlugin))
 		plugin = conn._authPlugin;
 	const(ubyte)[] nonce = greeting;
 
@@ -1002,6 +1002,7 @@ do
 	conn._socket.send(authPacket);
 
 	bool publicKeyRequested;
+	bool parsecSaltRequested;
 	for(;;)
 	{
 		auto packet = conn.getPacket();
@@ -1027,15 +1028,28 @@ do
 				enforce!MYX(isSupportedAuthPlugin(plugin),
 					"The server asks for the authentication plugin '" ~ plugin ~ "', which is not supported");
 				nonce = data[nameLength + 1 .. $];
-				if(nonce.length > 0 && nonce[$ - 1] == 0)
+				// The 20-byte scramble ends with a zero byte. The 32 random
+				// bytes of the MariaDB plugins may end with one by chance.
+				if(nonce.length > 0 && nonce[$ - 1] == 0
+					&& (answersGreeting(plugin) || nonce.length == ed25519NonceLength + 1))
 					nonce = nonce[0 .. $ - 1];
 				conn.sendAuthData(authResponse(plugin, conn._pwd, nonce));
 				publicKeyRequested = false;
+				parsecSaltRequested = plugin == parsecPlugin;
 				break;
 
-			case 0x01: // More data from the plugin (caching_sha2_password)
-				enforce!MYXProtocol(plugin == cachingSha2Plugin && packet.length > 1,
-					"Unexpected authentication data from the server");
+			case 0x01: // More data from the plugin
+				enforce!MYXProtocol(packet.length > 1, "Unexpected authentication data from the server");
+				if(parsecSaltRequested)
+				{
+					// parsec: the account's salt, the answer to our empty first response
+					ubyte[ed25519NonceLength] clientNonce;
+					secureRandom(clientNonce[]);
+					conn.sendAuthData(parsecResponse(conn._pwd, nonce, packet[1 .. $], clientNonce[]));
+					parsecSaltRequested = false;
+					break;
+				}
+				enforce!MYXProtocol(plugin == cachingSha2Plugin, "Unexpected authentication data from the server");
 				if(publicKeyRequested)
 				{
 					// The server's RSA public key, in PEM form

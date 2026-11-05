@@ -124,7 +124,7 @@ Additional notes
 This requires MySQL server v4.1.1 or later, or a MariaDB server. Older
 versions of MySQL server are obsolete, use known-insecure authentication,
 and are not supported by this package. Currently the github actions tests use
-MySQL 5.7, 8.0, 8.4 and 9, and MariaDB 10 and 11.4.
+MySQL 5.7, 8.0, 8.4 and 9, and MariaDB 10, 11.4 and 11.8.
 
 Accounts may use the `mysql_native_password` or the `caching_sha2_password`
 authentication plugin (the default of MySQL 8 and later). Since connections are
@@ -133,6 +133,11 @@ server's RSA public key whenever the server doesn't have the account in its
 cache (the first login after a server restart, for example). The client asks the
 server for that key, so this relies on the network path to the server being
 trusted, as unencrypted connections always do.
+
+MariaDB accounts may also use the `ed25519` plugin (`IDENTIFIED VIA ed25519`)
+and, on MariaDB 11.6 and later, `parsec`. Both prove the password with an
+Ed25519 signature of a random nonce, so the password itself is never sent,
+even without encryption.
 
 Normally, MySQL clients connect to a server on the same machine via a Unix
 socket on *nix systems, and through a named pipe on Windows. Neither of these
