@@ -85,7 +85,7 @@ void testMySql(string connStr)
 	writefln("Found %s databases", dbList.length);
 	foreach( db; dbList )
 	{
-		// MySQL 8 lists performance_schema even to users who may not open it
+		// MySQL 8 lists performance_schema even to users who cannot open it
 		try
 			c.selectDB(db);
 		catch(MYXReceived e)
