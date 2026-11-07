@@ -795,11 +795,12 @@ package(mysql) OKErrorPacket getCmdResponse(Connection conn, ubyte[] packet)
 	return okp;
 }
 
-package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, string plugin)
+package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, AuthPlugin plugin)
 {
+	const pluginName = plugin.to!string;
 	ubyte[] packet;
 	packet.reserve(4/*header*/ + 4 + 4 + 1 + 23 + conn._user.length+1 + token.length+1 + conn._db.length+1
-			+ plugin.length+1);
+			+ pluginName.length+1);
 	packet.length = 4 + 4 + 4; // create room for the beginning headers that we set rather than append
 
 	// NOTE: we'll set the header last when we know the size
@@ -840,7 +841,7 @@ package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, st
 	// The authentication plugin the token was made for
 	if(conn._cCaps & SvrCapFlags.PLUGIN_AUTH)
 	{
-		packet ~= cast(const(ubyte)[]) plugin;
+		packet ~= cast(const(ubyte)[]) pluginName;
 		packet ~= 0; // \0
 	}
 
@@ -935,11 +936,11 @@ package(mysql) ubyte[] parseGreeting(Connection conn)
 
 	// The server's default authentication plugin (MySQL 5.5.7+, MariaDB); some
 	// old servers omit the terminating zero.
-	conn._authPlugin = null;
+	conn._authPlugin = AuthPlugin.unsupported;
 	if((conn._sCaps & SvrCapFlags.PLUGIN_AUTH) && packet.length > 0)
 	{
 		auto nameLength = packet.countUntil(0);
-		conn._authPlugin = packet.consume!string(nameLength < 0 ? packet.length : nameLength).idup;
+		conn._authPlugin = authPluginFromName(packet.consume!string(nameLength < 0 ? packet.length : nameLength));
 	}
 
 	return authBuf;
@@ -993,8 +994,8 @@ do
 	// The first response is made for the server's default plugin if we
 	// implement it, else for mysql_native_password. If the account uses a
 	// different plugin, the server asks to switch to it.
-	string plugin = nativePasswordPlugin;
-	if((conn._cCaps & SvrCapFlags.PLUGIN_AUTH) && isSupportedAuthPlugin(conn._authPlugin))
+	auto plugin = AuthPlugin.mysql_native_password;
+	if((conn._cCaps & SvrCapFlags.PLUGIN_AUTH) && conn._authPlugin != AuthPlugin.unsupported)
 		plugin = conn._authPlugin;
 	const(ubyte)[] nonce = greeting;
 
@@ -1023,9 +1024,10 @@ do
 				auto data = packet[1 .. $];
 				auto nameLength = data.countUntil(0);
 				enforce!MYXProtocol(nameLength >= 0, "Malformed authentication switch request");
-				plugin = cast(string) data[0 .. nameLength].idup;
-				enforce!MYX(isSupportedAuthPlugin(plugin),
-					"The server asks for the authentication plugin '" ~ plugin ~ "', which is not supported");
+				auto name = cast(const(char)[]) data[0 .. nameLength];
+				plugin = authPluginFromName(name);
+				enforce!MYX(plugin != AuthPlugin.unsupported,
+					"The server asks for the authentication plugin '" ~ name.idup ~ "', which is not supported");
 				nonce = data[nameLength + 1 .. $];
 				if(nonce.length > 0 && nonce[$ - 1] == 0)
 					nonce = nonce[0 .. $ - 1];
@@ -1034,7 +1036,7 @@ do
 				break;
 
 			case 0x01: // More data from the plugin (caching_sha2_password)
-				enforce!MYXProtocol(plugin == cachingSha2Plugin && packet.length > 1,
+				enforce!MYXProtocol(plugin == AuthPlugin.caching_sha2_password && packet.length > 1,
 					"Unexpected authentication data from the server");
 				if(publicKeyRequested)
 				{

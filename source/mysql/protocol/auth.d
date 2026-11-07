@@ -28,11 +28,25 @@ import mysql.exceptions;
 
 @safe:
 
-/// Name of the `mysql_native_password` authentication plugin.
-package(mysql) enum nativePasswordPlugin = "mysql_native_password";
+/++
+The authentication plugins this client implements. Each member is named
+exactly like the plugin in the protocol, so `to!string` gives that name.
++/
+package(mysql) enum AuthPlugin : ubyte
+{
+	unsupported,           /// Any other plugin (or none); never sent.
+	mysql_native_password, ///
+	caching_sha2_password, ///
+}
 
-/// Name of the `caching_sha2_password` authentication plugin.
-package(mysql) enum cachingSha2Plugin = "caching_sha2_password";
+/// The plugin called `name` in the protocol, or `AuthPlugin.unsupported`.
+package(mysql) AuthPlugin authPluginFromName(const(char)[] name) pure nothrow @nogc
+{
+	static foreach (member; __traits(allMembers, AuthPlugin))
+		if (name == member)
+			return __traits(getMember, AuthPlugin, member);
+	return AuthPlugin.unsupported;
+}
 
 /// Bytes the client and the server exchange in `caching_sha2_password`.
 package(mysql) enum CachingSha2 : ubyte
@@ -43,26 +57,27 @@ package(mysql) enum CachingSha2 : ubyte
 }
 
 /++
-Whether this client implements the authentication plugin `name`.
-+/
-package(mysql) bool isSupportedAuthPlugin(const(char)[] name) pure nothrow
-{
-	return name == nativePasswordPlugin || name == cachingSha2Plugin;
-}
-
-/++
 The first authentication response of plugin `plugin` for `password`, given the
 server's random `nonce` (the 20-byte scramble, without the trailing zero byte).
 
 An empty password gives an empty response for both plugins.
 +/
-package(mysql) ubyte[] authResponse(const(char)[] plugin, const(char)[] password, const(ubyte)[] nonce)
+package(mysql) ubyte[] authResponse(AuthPlugin plugin, const(char)[] password, const(ubyte)[] nonce)
+in
 {
-	if (plugin == cachingSha2Plugin)
-		return cachingSha2Token(password, nonce);
-	if (plugin == nativePasswordPlugin)
-		return nativePasswordToken(password, nonce);
-	throw new MYX("Authentication plugin '" ~ plugin.idup ~ "' is not supported");
+	assert(plugin != AuthPlugin.unsupported);
+}
+do
+{
+	final switch (plugin)
+	{
+		case AuthPlugin.caching_sha2_password:
+			return cachingSha2Token(password, nonce);
+		case AuthPlugin.mysql_native_password:
+			return nativePasswordToken(password, nonce);
+		case AuthPlugin.unsupported:
+			assert(0);
+	}
 }
 
 /++
@@ -360,8 +375,12 @@ unittest
 			== "99db25ccb2a625f0e7cf4ce2e895ef9609dfe5e4");
 	assert(toHexString!(LetterCase.lower)(cachingSha2Token("secret", nonce))
 			== "bd7d89fc1c297010da753d08822e9e48d3eafbb6e68e1f9b403be12dc5687a40");
-	assert(isSupportedAuthPlugin("caching_sha2_password"));
-	assert(!isSupportedAuthPlugin("client_ed25519"));
+	import std.conv : to;
+
+	assert(authPluginFromName("caching_sha2_password") == AuthPlugin.caching_sha2_password);
+	assert(authPluginFromName("mysql_native_password") == AuthPlugin.mysql_native_password);
+	assert(authPluginFromName("client_ed25519") == AuthPlugin.unsupported);
+	assert(AuthPlugin.caching_sha2_password.to!string == "caching_sha2_password");
 }
 
 // RSA-OAEP round trip with a 1024-bit test key: encrypt, then decrypt with the
