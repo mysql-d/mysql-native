@@ -30,10 +30,11 @@ jobs:
           - dmd-2.098.1
           - ldc-1.31.0 # eq to dmd v2.101.2
           - ldc-1.28.1 # eq to dmd v2.098.1
-        # macos-latest is arm64: setup-dlang installs no DMD there, it asks for
-        # LDC 1.28.1 under a file name that doesn't exist (osx-aarch64 instead
-        # of osx-arm64), and the dub of LDC 1.31.0 crashes there. Run those on
-        # Intel macOS instead, as before macos-latest moved to arm64.
+        # macos-latest is arm64: setup-dlang installs no DMD there, and it asks
+        # for LDC 1.28.1 under a file name that doesn't exist (osx-aarch64
+        # instead of osx-arm64). Those run on Intel macOS instead. On current
+        # macOS (Intel too) the dmd 2.101.2 binary fails to run and the dub of
+        # LDC 1.31.0 crashes, so these two are tested on Linux and Windows only.
         exclude:
           - { os: macos-latest, compiler: dmd-latest }
           - { os: macos-latest, compiler: dmd-2.101.2 }
@@ -42,9 +43,7 @@ jobs:
           - { os: macos-latest, compiler: ldc-1.28.1 }
         include:
           - { os: macos-15-intel, compiler: dmd-latest }
-          - { os: macos-15-intel, compiler: dmd-2.101.2 }
           - { os: macos-15-intel, compiler: dmd-2.098.1 }
-          - { os: macos-15-intel, compiler: ldc-1.31.0 }
           - { os: macos-15-intel, compiler: ldc-1.28.1 }
     steps:
       - uses: actions/checkout@v3
