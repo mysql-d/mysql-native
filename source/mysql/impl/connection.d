@@ -21,6 +21,7 @@ import std.typecons;
 
 import mysql.exceptions;
 import mysql.logger;
+import mysql.protocol.auth : AuthPlugin;
 import mysql.protocol.comms;
 import mysql.protocol.constants;
 import mysql.protocol.packets;
@@ -169,9 +170,9 @@ package(mysql):
 
 	string _host, _user, _pwd, _db;
 
-	// The server's default authentication plugin, from its greeting (empty if
-	// the server doesn't support pluggable authentication).
-	string _authPlugin;
+	// The server's default authentication plugin, from its greeting
+	// (`unsupported` if we don't implement it or the server doesn't name one).
+	AuthPlugin _authPlugin;
 	ushort _port;
 
 	MySQLSocketType _socketType;
