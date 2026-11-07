@@ -26,7 +26,7 @@ jobs:
   #         - dmd-latest
   #         - ldc-latest
 
-  #   runs-on: ubuntu-20.04
+  #   runs-on: ubuntu-24.04
 
   #   services:
   #     mysql:
@@ -93,7 +93,7 @@ jobs:
           - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.0 # eq to dmd v2.097.2
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     services:
       mysql:
@@ -166,7 +166,7 @@ jobs:
           - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.0 # eq to dmd v2.097.2
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     services:
       mysql:
