@@ -145,7 +145,7 @@ Throws: `MYXProtocol` if the text is not such a key.
 +/
 package(mysql) RsaPublicKey parsePublicKeyPem(const(char)[] pem)
 {
-	import std.algorithm : countUntil, startsWith;
+	import std.algorithm : countUntil, find, startsWith;
 	import std.base64 : Base64;
 	import std.string : lineSplitter, strip;
 
@@ -200,8 +200,8 @@ package(mysql) RsaPublicKey parsePublicKeyPem(const(char)[] pem)
 	// RSAPublicKey: SEQUENCE { INTEGER modulus, INTEGER publicExponent }
 	auto rsa = DerReader(keySequence);
 	RsaPublicKey key;
-	key.modulus = stripLeadingZeros(rsa.read(DerTag.integer)).dup;
-	key.exponent = stripLeadingZeros(rsa.read(DerTag.integer)).dup;
+	key.modulus = rsa.read(DerTag.integer).find!(b => b != 0).dup;
+	key.exponent = rsa.read(DerTag.integer).find!(b => b != 0).dup;
 	enforce!MYXProtocol(key.modulus.length >= 64 && key.exponent.length > 0,
 			"Malformed RSA public key");
 	return key;
@@ -307,13 +307,6 @@ struct DerReader
 	}
 }
 
-const(ubyte)[] stripLeadingZeros(const(ubyte)[] value) pure nothrow
-{
-	while (value.length > 1 && value[0] == 0)
-		value = value[1 .. $];
-	return value;
-}
-
 // MGF1 with SHA-1 (RFC 8017, appendix B.2.1).
 ubyte[] mgf1Sha1(const(ubyte)[] seed, size_t length)
 {
@@ -333,62 +326,26 @@ ubyte[] mgf1Sha1(const(ubyte)[] seed, size_t length)
 }
 
 // base ^^ exponent mod modulus, all big-endian; the result has modulus.length bytes.
-ubyte[] modPow(const(ubyte)[] base, const(ubyte)[] exponent, const(ubyte)[] modulus) @trusted
+ubyte[] modPow(const(ubyte)[] base, const(ubyte)[] exponent, const(ubyte)[] modulus)
 {
-	import std.bigint : BigInt;
+	import std.bigint : BigInt, powmod;
 
-	const m = toBigInt(modulus);
-	const b = toBigInt(base) % m;
-	BigInt r = 1;
-	foreach (byteValue; exponent)
-		foreach_reverse (bit; 0 .. 8)
-		{
-			r = (r * r) % m;
-			if ((byteValue >> bit) & 1)
-				r = (r * b) % m;
-		}
-	return fromBigInt(r, modulus.length);
-}
+	auto m = BigInt(false, modulus);
+	auto r = powmod(BigInt(false, base) % m, BigInt(false, exponent), m);
 
-auto toBigInt(const(ubyte)[] bytes) @trusted
-{
-	import std.bigint : BigInt;
-
-	static immutable hexDigits = "0123456789abcdef";
-	auto hex = new char[2 + 2 * bytes.length + 1];
-	hex[0 .. 3] = "0x0";
-	foreach (i, b; bytes)
+	// r < m, so it fits in modulus.length bytes; its digits are uints, least significant first
+	auto result = new ubyte[modulus.length];
+	foreach (i; 0 .. r.uintLength)
 	{
-		hex[3 + 2 * i] = hexDigits[b >> 4];
-		hex[4 + 2 * i] = hexDigits[b & 0xF];
+		const digit = r.getDigit!uint(i);
+		foreach (b; 0 .. 4)
+		{
+			const pos = 4 * i + b; // counted from the least significant byte
+			if (pos < result.length)
+				result[$ - 1 - pos] = cast(ubyte)(digit >> (8 * b));
+		}
 	}
-	return BigInt(hex);
-}
-
-ubyte[] fromBigInt(T)(const T value, size_t length) @trusted
-{
-	import std.array : replace;
-	import std.format : format;
-
-	// BigInt groups its hex digits with underscores
-	auto hex = format("%x", value).replace("_", "");
-	if (hex.length % 2)
-		hex = "0" ~ hex;
-	enforce!MYX(hex.length / 2 <= length, "RSA result longer than the modulus");
-	auto result = new ubyte[length];
-	const offset = length - hex.length / 2;
-	foreach (i; 0 .. hex.length / 2)
-		result[offset + i] = cast(ubyte)((hexValue(hex[2 * i]) << 4) | hexValue(hex[2 * i + 1]));
 	return result;
-}
-
-uint hexValue(char c) pure nothrow
-{
-	if (c >= '0' && c <= '9')
-		return c - '0';
-	if (c >= 'a' && c <= 'f')
-		return c - 'a' + 10;
-	return c - 'A' + 10;
 }
 
 // Values from Python: hashlib.sha1 / hashlib.sha256 over the same inputs.
@@ -427,9 +384,9 @@ a6LcRkULg/sPOf+vQwIDAQAB
 	assert(key.modulus.length == 128);
 	assert(key.exponent == [0x01, 0x00, 0x01]);
 
-	ubyte[] d;
-	foreach (i; 0 .. privateExponent.length / 2)
-		d ~= cast(ubyte)((hexValue(privateExponent[2 * i]) << 4) | hexValue(privateExponent[2 * i + 1]));
+	import std.conv : hexString;
+
+	const d = cast(const(ubyte)[]) hexString!privateExponent;
 
 	const ubyte[] message = cast(const(ubyte)[]) "password\0";
 	ubyte[20] seed;
