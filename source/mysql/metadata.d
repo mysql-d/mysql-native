@@ -113,58 +113,61 @@ private:
 		string query = procs ? "SHOW PROCEDURE STATUS WHERE db='": "SHOW FUNCTION STATUS WHERE db='";
 		query ~= _con.currentDB ~ "'";
 
-		// Columns are matched by name: MySQL 8.4 inserted a Language column
-		auto range = _con.query(query);
-		auto names = range.colNames.dup;
-		auto rs = range.array;
+		auto rs = _con.query(query).array;
 		MySQLProcedure[] pa;
 		pa.length = rs.length;
 		foreach (size_t i; 0..rs.length)
 		{
 			MySQLProcedure foo;
 			Row r = rs[i];
-			foreach (size_t j, name; names)
+			// MySQL 8.4 and newer insert a Language column after Type: 12 columns
+			// instead of 11. Skip it and number the other columns as before.
+			const hasLanguage = r.length > 11;
+			foreach (size_t j; 0..r.length)
 			{
+				if (hasLanguage && j == 3)
+					continue;
 				if (r.isNull(j))
 					continue;
 				auto value = r[j].toString();
-				switch (name)
+				const index = hasLanguage && j > 3 ? j - 1 : j;
+				switch (index)
 				{
-					case "Db":
+					case 0:
 						foo.db = value;
 						break;
-					case "Name":
+					case 1:
 						foo.name = value;
 						break;
-					case "Type":
+					case 2:
 						foo.type = value;
 						break;
-					case "Definer":
+					case 3:
 						foo.definer = value;
 						break;
-					case "Modified":
+					case 4:
 						foo.modified = r[j].get!(DateTime);
 						break;
-					case "Created":
+					case 5:
 						foo.created = r[j].get!(DateTime);
 						break;
-					case "Security_type":
+					case 6:
 						foo.securityType = value;
 						break;
-					case "Comment":
+					case 7:
 						foo.comment = value;
 						break;
-					case "character_set_client":
+					case 8:
 						foo.charSetClient = value;
 						break;
-					case "collation_connection":
+					case 9:
 						foo.collationConnection = value;
 						break;
-					case "Database Collation":
+					case 10:
 						foo.collationDB = value;
 						break;
 					default:
-						break; // a column of a newer server version
+						break; // a column added by a later server version
 				}
 			}
 			pa[i] = foo;
