@@ -54,7 +54,7 @@ jobs:
           compiler: ${{ matrix.compiler }}
 
       - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.2.0 # saves the package cache in its post step
+        uses: WebFreak001/dub-upgrade@v0.2.0
 
       - name: Build Library
         run: dub build --build=release --config=library
@@ -103,7 +103,7 @@ jobs:
           compiler: ${{ matrix.compiler }}
 
       - name: Upgrade dub dependencies
-        uses: WebFreak001/dub-upgrade@v0.2.0 # saves the package cache in its post step
+        uses: WebFreak001/dub-upgrade@v0.2.0
 
       - name: Build Library
         run: dub build --build=release --config=library
