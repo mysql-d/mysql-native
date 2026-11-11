@@ -833,10 +833,14 @@ package(mysql) ubyte[] buildAuthPacket(Connection conn, const(ubyte)[] token, Au
 			packet ~= token[i];
 	}
 
-	// Add the default database as a null terminated string
-	foreach(i; 0 .. conn._db.length)
-		packet ~= conn._db[i];
-	packet ~= 0; // \0
+	// Add the default database as a null terminated string. The server reads
+	// it only with CONNECT_WITH_DB; without it the plugin name comes next.
+	if(conn._cCaps & SvrCapFlags.WITH_DB)
+	{
+		foreach(i; 0 .. conn._db.length)
+			packet ~= conn._db[i];
+		packet ~= 0; // \0
+	}
 
 	// The authentication plugin the token was made for
 	if(conn._cCaps & SvrCapFlags.PLUGIN_AUTH)
