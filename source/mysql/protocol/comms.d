@@ -22,7 +22,6 @@ module mysql.protocol.comms;
 
 import std.algorithm;
 import std.conv;
-import std.digest.sha;
 import std.exception;
 import std.range;
 
