@@ -259,14 +259,17 @@ do
 }
 
 /// Fills `buffer` with random bytes from the operating system's CSPRNG.
-package(mysql) void secureRandom(ubyte[] buffer) @trusted
+package(mysql) void secureRandom(ubyte[] buffer)
 {
 	if (buffer.length == 0)
 		return;
 	version (Windows)
 	{
-		enforce!MYX(BCryptGenRandom(null, buffer.ptr, cast(uint) buffer.length,
-				bcryptUseSystemPreferredRng) == 0, "BCryptGenRandom failed");
+		enforce!MYX(buffer.length <= uint.max, "Random buffer too large");
+		// Safe: the pointer and the length describe the same slice.
+		const status = (() @trusted => BCryptGenRandom(null, buffer.ptr,
+				cast(uint) buffer.length, bcryptUseSystemPreferredRng))();
+		enforce!MYX(status == 0, "BCryptGenRandom failed");
 	}
 	else version (Posix)
 	{
@@ -285,7 +288,7 @@ version (Windows)
 {
 	pragma(lib, "bcrypt");
 	enum uint bcryptUseSystemPreferredRng = 0x00000002;
-	extern (Windows) int BCryptGenRandom(void* algorithm, ubyte* buffer, uint length, uint flags) nothrow @nogc;
+	extern (Windows) int BCryptGenRandom(void* algorithm, ubyte* buffer, uint length, uint flags) @system nothrow @nogc;
 }
 
 enum DerTag : ubyte
