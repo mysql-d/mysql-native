@@ -123,7 +123,7 @@ private:
 			// MySQL 8.4 and newer insert a Language column after Type: 12 columns
 			// instead of 11. Skip it and number the other columns as before.
 			const hasLanguage = r.length > 11;
-			foreach (size_t j; 0..r.length)
+			foreach (int j; 0..(hasLanguage ? 12 : 11))
 			{
 				if (hasLanguage && j == 3)
 					continue;
@@ -167,7 +167,7 @@ private:
 						foo.collationDB = value;
 						break;
 					default:
-						break; // a column added by a later server version
+						assert(0);
 				}
 			}
 			pa[i] = foo;
