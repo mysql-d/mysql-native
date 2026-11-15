@@ -207,26 +207,18 @@ first <code class="lang-d"><span class="pln">mysql<wbr/></span><span class="pun"
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="typ">void</span> <span class="pln">queryRowTuple</span>(T...)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><span class="pln">T</span> <span class="pln">args</span>
+			<span class="typ">void</span> <span class="pln">queryRowTuple</span>(T...)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><span class="pln">T</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<span class="typ">void</span> <span class="pln">queryRowTuple</span>(T...)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/unsafe/prepared/Prepared.html"><span class="typ">Prepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><span class="pln">T</span> <span class="pln">args</span>
+			<span class="typ">void</span> <span class="pln">queryRowTuple</span>(T...)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/unsafe/prepared/Prepared.html"><span class="typ">Prepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><span class="pln">T</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span><span class="pun">;</span>
 					</div>
@@ -250,8 +242,7 @@ command repeatedly and you are CERTAIN all the data you're sending is properly
 escaped. Otherwise, consider using overload that takes a <code class="lang-d"><span class="typ">Prepared</span></code>.
 </p>
 </section>
-
-			<section><h2>Type Mappings</h2>
+<section><h2>Type Mappings</h2>
 <p>See the <a href="../../..//mysql.html">MySQL/D Type Mappings tables</a>
 </p>
 </section>

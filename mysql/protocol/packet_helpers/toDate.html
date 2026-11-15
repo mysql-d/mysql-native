@@ -220,10 +220,8 @@ $('#symbolSearchPane').show();</script>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">datetime<wbr/></span><span class="pun">.</span><span class="pln">date<wbr/></span><span class="pun">.</span><span class="typ">Date</span> <span class="pln">toDate</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">ubyte</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">a</span>
+			<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">datetime<wbr/></span><span class="pun">.</span><span class="pln">date<wbr/></span><span class="pun">.</span><span class="typ">Date</span> <span class="pln">toDate</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">ubyte</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">a</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">pure @safe</span><span class="pun">;</span>
 					</div>
@@ -233,8 +231,7 @@ $('#symbolSearchPane').show();</script>
 with a leading length byte, and a minimal number of bytes to embody the data.
 </p>
 </section>
-
-			<section><h3>Parameters</h3>
+<section><h3>Parameters</h3>
 <table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
 <tr><td id="a">a</td><td> slice of a protocol packet beginning at the length byte for a
             chunk of Date data.</td></tr>
@@ -249,10 +246,8 @@ with a leading length byte, and a minimal number of bytes to embody the data.
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">datetime<wbr/></span><span class="pun">.</span><span class="pln">date<wbr/></span><span class="pun">.</span><span class="typ">Date</span> <span class="pln">toDate</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">)</span><span class="pun">[]</span> <span class="pln">s</span>
+			<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">datetime<wbr/></span><span class="pun">.</span><span class="pln">date<wbr/></span><span class="pun">.</span><span class="typ">Date</span> <span class="pln">toDate</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">)</span><span class="pun">[]</span> <span class="pln">s</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 					</div>
@@ -261,8 +256,7 @@ with a leading length byte, and a minimal number of bytes to embody the data.
 			<section><p>Text representations of a Date are as in 2011-11-11
 </p>
 </section>
-
-			<section><h3>Parameters</h3>
+<section><h3>Parameters</h3>
 <table><col class="caption"><tr><th>Name</th><th>Description</th></tr>
 <tr><td id="s">s</td><td> A string representation of the time difference.</td></tr>
 </table>

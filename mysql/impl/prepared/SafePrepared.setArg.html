@@ -206,12 +206,9 @@ $('#symbolSearchPane').show();</script>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="typ">void</span> <span class="pln">setArg</span>(T)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">index</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">val</span><span class="pun">,</span>
+			<span class="typ">void</span> <span class="pln">setArg</span>(T)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">index</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">val</span><span class="pun">,</span>
 			<br/>
 			&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/SafeParameterSpecialization.html"><span class="typ">SafeParameterSpecialization</span></a> <span class="pln">psn</span> <span class="pun">=</span> <span class="pln">SPSN<wbr/></span><span class="pun">.</span><span class="pln">init</span>
 			<br/>
@@ -220,12 +217,9 @@ $('#symbolSearchPane').show();</script>
 			<span class="kwd">if</span> <span class="pun">(</span><span class="pun">!</span><span class="pln">isInstanceOf</span><span class="pun">!(</span><span class="typ">Nullable</span><span class="pun">, </span><span class="pln">T</span><span class="pun">) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T </span><span class="pun">== </span><span class="typ">Variant</span><span class="pun">)</span><span class="pun">);</span>
 			<br/>
 			<br/>
-			<span class="typ">void</span> <span class="pln">setArg</span>(T)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">index</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="typ">Nullable</span>!T <span class="pln">val</span><span class="pun">,</span>
+			<span class="typ">void</span> <span class="pln">setArg</span>(T)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<span class="pln">size_t</span> <span class="pln">index</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="typ">Nullable</span>!T <span class="pln">val</span><span class="pun">,</span>
 			<br/>
 			&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/SafeParameterSpecialization.html"><span class="typ">SafeParameterSpecialization</span></a> <span class="pln">psn</span> <span class="pun">=</span> <span class="pln">SPSN<wbr/></span><span class="pun">.</span><span class="pln">init</span>
 			<br/>
@@ -252,8 +246,7 @@ $('#symbolSearchPane').show();</script>
 	a dummy value for <code class="lang-d"><a href="../../../mysql/impl/prepared/SafePrepared.setArg.html#val"><span class="pln">val</span></a></code> that's typed <code class="lang-d"><span class="typ">ubyte</span><span class="pun">[]</span></code>. For example: <code class="lang-d"><span class="kwd">cast</span><span class="pun">(</span><span class="typ">ubyte</span><span class="pun">[])[]</span></code>.
 </p>
 </section>
-
-			<section><h2>Type Mappings</h2>
+<section><h2>Type Mappings</h2>
 <p>See the <a href="../../..//mysql.html">MySQL/D Type Mappings tables</a>
 </p>
 </section>

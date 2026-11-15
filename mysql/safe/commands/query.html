@@ -206,76 +206,54 @@ $('#symbolSearchPane').show();</script>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
 			<br/>
 			&nbsp;&nbsp;<a href="../../../mysql/safe/commands/ColumnSpecialization.html"><span class="typ">ColumnSpecialization</span></a><span class="pun">[]</span> <span class="pln">csa</span> <span class="pun">=</span> <span class="kwd">null</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>(T...)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">args</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>(T...)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span>
 			<br/>
 			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">&gt; </span><span class="lit">0 </span><span class="pun">&amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">Variant</span><span class="pun">[]) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">MySQLVal</span><span class="pun">[]) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">ColumnSpecialization</span><span class="pun">) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">ColumnSpecialization</span><span class="pun">[])</span><span class="pun">);</span>
 			<br/>
 			<br/>
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="typ">TaggedAlgebraic</span>!(mysql.types._MYTYPE)<span class="pun">[]</span> <span class="pln">args</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="typ">TaggedAlgebraic</span>!(mysql.types._MYTYPE)<span class="pun">[]</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>(T...)
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/unsafe/prepared/Prepared.html"><span class="typ">Prepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">args</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>(T...)<span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/unsafe/prepared/Prepared.html"><span class="typ">Prepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span>
 			<br/>
 			<span class="kwd">if</span> <span class="pun">(</span><span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">length </span><span class="pun">&gt; </span><span class="lit">0 </span><span class="pun">&amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">Variant</span><span class="pun">[]) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">MySQLVal</span><span class="pun">[]) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">ColumnSpecialization</span><span class="pun">) &amp;&amp; !</span><span class="kwd">is</span><span class="pun">(</span><span class="pln">T</span><span class="pun">[</span><span class="lit">0</span><span class="pun">] == </span><span class="typ">ColumnSpecialization</span><span class="pun">[])</span><span class="pun">);</span>
 			<br/>
 			<br/>
-			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
-			<br/>
-			&nbsp;&nbsp;<span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="typ">TaggedAlgebraic</span>!(mysql.types._MYTYPE)<span class="pun">[]</span> <span class="pln">args</span>
+			<a href="../../../mysql/impl/result/SafeResultRange.html"><span class="typ">SafeResultRange</span></a> <span class="pln">query</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/connection/Connection.html"><span class="typ">Connection</span></a> <span class="pln">conn</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">ref </span><a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span><span class="pun">,</span>
+			<br/>&nbsp;&nbsp;<span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="pln">taggedalgebraic<wbr/></span><span class="pun">.</span><span class="typ">TaggedAlgebraic</span>!(mysql.types._MYTYPE)<span class="pun">[]</span> <span class="pln">args</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 					</div>
@@ -318,8 +296,7 @@ escaped. Otherwise, consider using overload that takes a <code class="lang-d"><s
 <code class="lang-d"><a href="../../../mysql/impl/prepared/SafePrepared.setArgs.html" title="mysql.impl.prepared.SafePrepared.setArgs"><span class="typ">SafePrepared<wbr/></span><span class="pun">.</span><span class="pln">setArgs</span></a></code>.
 </p>
 </section>
-
-			<section><h2>Type Mappings</h2>
+<section><h2>Type Mappings</h2>
 <p>See the <a href="../../..//mysql.html">MySQL/D Type Mappings tables</a>
 </p>
 </section>

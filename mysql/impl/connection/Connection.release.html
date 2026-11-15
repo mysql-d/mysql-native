@@ -206,26 +206,20 @@ $('#symbolSearchPane').show();</script>
 			<div class="prototype">
 				<code class="lang-d">
 					<div class="single-prototype">
-			<span class="typ">void</span> <span class="pln">release</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span>
+			<span class="typ">void</span> <span class="pln">release</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/SafePrepared.html"><span class="typ">SafePrepared</span></a> <span class="pln">prepared</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<span class="typ">void</span> <span class="pln">release</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/UnsafePrepared.html"><span class="typ">UnsafePrepared</span></a> <span class="pln">prepared</span>
+			<span class="typ">void</span> <span class="pln">release</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<a href="../../../mysql/impl/prepared/UnsafePrepared.html"><span class="typ">UnsafePrepared</span></a> <span class="pln">prepared</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 			<br/>
 			<br/>
-			<span class="typ">void</span> <span class="pln">release</span>
-			<span class="pun">(</span>
-			<br/>
-			&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span>
+			<span class="typ">void</span> <span class="pln">release</span><span class="pun">(</span>
+			<br/>&nbsp;&nbsp;<span class="kwd">const</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span> <span class="pln">sql</span>
 			<br/>
 			<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 					</div>
@@ -251,8 +245,7 @@ $('#symbolSearchPane').show();</script>
 	automatically re-register them upon their next use.
 </p>
 </section>
-
-			<section><h2>Notes</h2>
+<section><h2>Notes</h2>
 <p>In actuality, the server might not immediately be told to release the
 	statement (although <code class="lang-d"><a href="../../../mysql/impl/connection/Connection.isRegistered.html"><span class="pln">isRegistered</span></a></code> will still report <code class="lang-d"><span class="kwd">false</span></code>).
 </p>
