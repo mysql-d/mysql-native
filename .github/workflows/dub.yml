@@ -28,19 +28,16 @@ jobs:
           - ldc-latest
           - dmd-2.101.2
           - dmd-2.098.1
-          - ldc-1.31.0 # eq to dmd v2.101.2
-          - ldc-1.28.1 # eq to dmd v2.098.1
         # macos-latest is arm64: setup-dlang installs no DMD there, and it asks
         # for LDC 1.28.1 under a file name that doesn't exist (osx-aarch64
         # instead of osx-arm64). Those run on Intel macOS instead. On current
-        # macOS (Intel too) the dmd 2.101.2 binary fails to run and the dub of
-        # LDC 1.31.0 crashes, so these two are tested on Linux and Windows only.
+        # macOS (Intel too) the dmd 2.101.2 binary fails to run, so it is
+        # tested on Linux and Windows only. LDC 1.31.0 (its dub crashes on
+        # macOS) and LDC 1.28.1 on Linux/Windows are in build-older.
         exclude:
           - { os: macos-latest, compiler: dmd-latest }
           - { os: macos-latest, compiler: dmd-2.101.2 }
           - { os: macos-latest, compiler: dmd-2.098.1 }
-          - { os: macos-latest, compiler: ldc-1.31.0 }
-          - { os: macos-latest, compiler: ldc-1.28.1 }
         include:
           - { os: macos-15-intel, compiler: dmd-latest }
           - { os: macos-15-intel, compiler: dmd-2.098.1 }
@@ -65,7 +62,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest ] # don't bother with macos-latest
+        # Prebuilt older LDC binaries need libxml2.so.2, which Ubuntu 26.04
+        # (ubuntu-latest) no longer provides, so pin Ubuntu 24.04.
+        os: [ ubuntu-24.04, windows-latest ] # don't bother with macos-latest
         compiler:
           - dmd-2.097.2
           - dmd-2.095.1
@@ -85,6 +84,8 @@ jobs:
           #- dmd-2.082.1
           #- dmd-2.081.2
           #- dmd-2.080.1
+          - ldc-1.31.0 # eq to dmd v2.101.2
+          - ldc-1.28.1 # eq to dmd v2.098.1
           - ldc-1.27.1 # eq to dmd v2.097.2
           - ldc-1.26.0 # eq to dmd v2.096.1
           - ldc-1.25.1 # eq to dmd v2.095.1
