@@ -326,3 +326,37 @@ unittest
 	stmt.setArgs(Timestamp(2011_11_11_12_20_02UL));
 	cn.exec(stmt);
 }
+
+// JSON and GEOMETRY columns used to fail with an assertion ("Unsupported SQL type")
+@("json-geometry")
+debug(MYSQLN_TESTS)
+unittest
+{
+	mixin(scopedCn);
+	cn.exec("DROP TABLE IF EXISTS `json_geometry`");
+	cn.exec(
+		"CREATE TABLE `json_geometry` (
+		`id` INT,
+		`doc` JSON,
+		`shape` GEOMETRY
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+	);
+	cn.exec(`INSERT INTO json_geometry VALUES (1, '{"a": [1, 2]}', ST_GeomFromText('POINT(1 2)'))`);
+
+	void check(T)(T row)
+	{
+		assert(row[0] == `{"a": [1, 2]}`);
+		// GEOMETRY: a 4-byte SRID, then WKB: byte order 1 (little endian), type 1 (point), x, y
+		auto shape = row[1].get!(ubyte[]);
+		assert(shape.length == 25);
+		assert(shape[4] == 1 && shape[5 .. 9] == [1, 0, 0, 0]);
+		assert(row[2] == "[1, 2]");
+	}
+
+	// Text protocol
+	check(cn.query("SELECT `doc`, `shape`, JSON_ARRAY(1, 2) FROM `json_geometry`").front);
+	// Binary protocol
+	auto stmt = cn.prepare("SELECT `doc`, `shape`, JSON_ARRAY(1, 2) FROM `json_geometry` WHERE `id` = ?");
+	stmt.setArgs(1);
+	check(cn.query(stmt).front);
+}
