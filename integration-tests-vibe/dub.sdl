@@ -8,4 +8,4 @@ dependency "mysql-native:integration-tests" path="../"
 dependency "vibe-core" version=">=1.16.0"
 targetType "executable"
 // TLS support (see mysql.ssl): the tests run over TLS when testConnectionStr.txt has an sslmode
-dependency "dbwire:tls" version="~>0.6"
+dependency "dbwire:tls" version="~>0.9.7"

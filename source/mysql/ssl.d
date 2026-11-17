@@ -10,7 +10,7 @@ project to enable TLS:
 // dub.json
 "dependencies": {
 	"mysql-native": "...",
-	"dbwire:tls": "~>0.6"
+	"dbwire:tls": "~>0.9.7"
 }
 ------------------
 

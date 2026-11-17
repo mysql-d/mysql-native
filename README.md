@@ -129,7 +129,7 @@ mysql-native uses only when your project depends on it:
 ```json
 "dependencies": {
 	"mysql-native": "...",
-	"dbwire:tls": "~>0.6"
+	"dbwire:tls": "~>0.9.7"
 }
 ```
 
