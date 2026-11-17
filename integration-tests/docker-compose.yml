@@ -1,7 +1,9 @@
 version: '3.7'
 services:
   mysql:
-    # Don't use latest (MySQL Server 8.0) as we cannot currently support it
+    # mysql:8.0, mysql:8.4, mysql:9 and mariadb work too; on MySQL 8 and later the
+    # tests that create stored functions need log_bin_trust_function_creators=1:
+    #   docker compose exec mysql mysql -uroot -e "SET PERSIST log_bin_trust_function_creators = 1"
     image: mysql:5.7
     restart: always
     ports: ['3306:3306']
