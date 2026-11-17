@@ -343,13 +343,59 @@ ubyte[] mgf1Sha1(const(ubyte)[] seed, size_t length)
 	return mask[0 .. length];
 }
 
+// powmod and the BigInt(isNegative, magnitude) constructor are new in Phobos 2.094
+private enum havePowmod = __traits(compiles, {
+	import std.bigint : BigInt, powmod;
+
+	const(ubyte)[] bytes;
+	auto r = powmod(BigInt(false, bytes), BigInt(false, bytes), BigInt(false, bytes));
+});
+
 // base ^^ exponent mod modulus, all big-endian; the result has modulus.length bytes.
 ubyte[] modPow(const(ubyte)[] base, const(ubyte)[] exponent, const(ubyte)[] modulus)
 {
-	import std.bigint : BigInt, powmod;
+	import std.bigint : BigInt;
 
-	auto m = BigInt(false, modulus);
-	auto r = powmod(BigInt(false, base) % m, BigInt(false, exponent), m);
+	static if (havePowmod)
+	{
+		import std.bigint : powmod;
+
+		auto m = BigInt(false, modulus);
+		auto r = powmod(BigInt(false, base) % m, BigInt(false, exponent), m);
+	}
+	else
+	{
+		// Before 2.094 BigInt's operators aren't marked @safe; they only work on
+		// BigInt's own memory, and this function touches nothing else.
+		static BigInt powmodBytes(const(ubyte)[] base, const(ubyte)[] exponent,
+				const(ubyte)[] modulus) @trusted
+		{
+			static BigInt fromBytes(const(ubyte)[] bytes)
+			{
+				BigInt value;
+				foreach (byteValue; bytes)
+				{
+					value <<= 8;
+					value += byteValue;
+				}
+				return value;
+			}
+
+			const m = fromBytes(modulus);
+			const x = fromBytes(base) % m;
+			BigInt value = 1;
+			foreach (byteValue; exponent)
+				foreach_reverse (bit; 0 .. 8)
+				{
+					value = (value * value) % m;
+					if ((byteValue >> bit) & 1)
+						value = (value * x) % m;
+				}
+			return value;
+		}
+
+		auto r = powmodBytes(base, exponent, modulus);
+	}
 
 	// r < m, so it fits in modulus.length bytes; its digits are uints, least significant first
 	auto result = new ubyte[modulus.length];
