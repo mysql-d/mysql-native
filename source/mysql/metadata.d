@@ -120,12 +120,18 @@ private:
 		{
 			MySQLProcedure foo;
 			Row r = rs[i];
-			foreach (int j; 0..11)
+			// MySQL 8.4 and newer insert a Language column after Type: 12 columns
+			// instead of 11. Skip it and number the other columns as before.
+			const hasLanguage = r.length > 11;
+			foreach (int j; 0..(hasLanguage ? 12 : 11))
 			{
+				if (hasLanguage && j == 3)
+					continue;
 				if (r.isNull(j))
 					continue;
 				auto value = r[j].toString();
-				switch (j)
+				const index = hasLanguage && j > 3 ? j - 1 : j;
+				switch (index)
 				{
 					case 0:
 						foo.db = value;
