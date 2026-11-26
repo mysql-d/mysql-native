@@ -56,6 +56,7 @@ enum SQLType : short
 	NEWDATE      = 0x0e,
 	VARCHAR      = 0x0f, // new in MySQL 5.0
 	BIT          = 0x10, // new in MySQL 5.0
+	JSON = 0xf5, // new in MySQL 5.7.8
 	NEWDECIMAL   = 0xf6, // new in MYSQL 5.0
 	ENUM         = 0xf7,
 	SET          = 0xf8,

@@ -648,7 +648,9 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
 {
 	switch(sqlType)
 	{
-		default: assert(false, "Unsupported SQL type "~to!string(sqlType));
+		default:
+			// Throw rather than assert: an unknown type from the server must not halt the program
+			throw new MYXProtocol("Unsupported SQL type "~to!string(sqlType), __FILE__, __LINE__);
 		case SQLType.NULL:
 			SQLValue result;
 			result.isIncomplete = false;
@@ -683,12 +685,15 @@ SQLValue consumeIfComplete()(ref ubyte[] packet, SQLType sqlType, bool binary, b
 		case SQLType.SET:
 		case SQLType.VARSTRING:
 		case SQLType.STRING:
+		case SQLType.DECIMAL:
 		case SQLType.NEWDECIMAL:
+		case SQLType.JSON: // text, although the server reports the binary character set for it
 			return packet.consumeIfComplete!string(false, unsigned);
 		case SQLType.TINYBLOB:
 		case SQLType.MEDIUMBLOB:
 		case SQLType.BLOB:
 		case SQLType.LONGBLOB:
+		case SQLType.GEOMETRY: // the server's internal format: a 4-byte SRID, then WKB
 		case SQLType.BIT:  // Yes, BIT. See note below.
 
 			// TODO: This line should work. Why doesn't it?
@@ -1129,4 +1134,48 @@ do
 {
 	dataLength.packInto!(uint, true)(packet);
 	packet[3] = packetNumber;
+}
+
+@("consumeIfComplete-json-geometry-decimal")
+debug(MYSQLN_TESTS)
+unittest
+{
+	import mysql.exceptions : MYXProtocol;
+	import mysql.types : MySQLVal;
+
+	enum ushort binaryCharSet = 0x3F;
+
+	// A length-coded value, as the server sends it in both the text and the binary protocol
+	static ubyte[] lcs(const(char)[] text)
+	{
+		return [cast(ubyte) text.length] ~ cast(const(ubyte)[]) text;
+	}
+
+	// JSON is text, although the server reports the binary character set for it
+	auto packet = lcs(`{"a": 1}`);
+	auto v = packet.consumeIfComplete(SQLType.JSON, false, false, binaryCharSet);
+	assert(!v.isNull && v.value.kind == MySQLVal.Kind.Text && v.value.get!string == `{"a": 1}`);
+	assert(packet.length == 0);
+	packet = lcs(`[1, 2]`);
+	v = packet.consumeIfComplete(SQLType.JSON, true, false, binaryCharSet); // binary protocol
+	assert(v.value.get!string == `[1, 2]`);
+
+	// GEOMETRY is binary data: a 4-byte SRID, then WKB
+	packet = [5, 0, 0, 0, 0, 1];
+	v = packet.consumeIfComplete(SQLType.GEOMETRY, false, false, binaryCharSet);
+	assert(v.value.kind == MySQLVal.Kind.Blob && v.value.get!(ubyte[]) == [0, 0, 0, 0, 1]);
+
+	// The old DECIMAL type is text, like NEWDECIMAL
+	packet = lcs("-1.50");
+	v = packet.consumeIfComplete(SQLType.DECIMAL, false, false, 8);
+	assert(v.value.get!string == "-1.50");
+
+	// An unknown type is an exception, not an assertion that halts a release build
+	packet = lcs("x");
+	bool thrown;
+	try
+		packet.consumeIfComplete(cast(SQLType) 0xf4, false, false, 8);
+	catch (MYXProtocol)
+		thrown = true;
+	assert(thrown);
 }
