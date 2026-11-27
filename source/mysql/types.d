@@ -1,8 +1,9 @@
 /// Structures for MySQL types not built-in to D/Phobos.
 module mysql.types;
 import taggedalgebraic.taggedalgebraic;
-import std.datetime : DateTime, TimeOfDay, Date;
+import std.datetime : DateTime, TimeOfDay, Date, SysTime,TimeZone,usecs;
 import std.typecons : Nullable;
+import std.format;
 
 /++
 A simple struct to represent time difference.
@@ -33,6 +34,40 @@ struct Timestamp
 	ulong rep;
 }
 
+/++
+A D struct to stand for a DateTime with sub second resolution
+
++/
+struct DateTimeExt
+{
+	DateTime dt;
+	alias dt this;
+	uint u_seconds;
+	string toString() pure nothrow @safe const
+	{
+		try
+			return dt.date.toISOExtString ~ " " ~ dt.timeOfDay.toISOExtString ~ format(".%06d",this.u_seconds);
+		catch(Exception e)
+			assert(0,"DateTimeExt.toString threw");
+	}
+	SysTime makeSysTime(return scope immutable TimeZone tz = null) @safe const scope
+	{
+		return SysTime(dt,usecs(this.u_seconds),tz);
+	}
+	DateTimeExt opAssign(const DateTime x) @safe
+	{
+		dt = x;
+		u_seconds  = 0;
+		return this;
+	}
+	DateTime opCast(T)()
+	if (is(T == DateTime))
+	{
+		return dt;
+	}
+}
+
+
 private union _MYTYPE
 {
 @safeOnly:
@@ -54,7 +89,7 @@ private union _MYTYPE
 	long Long;
 	float Float;
 	double Double;
-	.DateTime DateTime;
+	DateTimeExt DateTime;
 	TimeOfDay Time;
 	.Timestamp Timestamp;
 	.Date Date;
@@ -74,7 +109,7 @@ private union _MYTYPE
 	const(long)* LongRef;
 	const(float)* FloatRef;
 	const(double)* DoubleRef;
-	const(.DateTime)* DateTimeRef;
+	const(DateTimeExt)* DateTimeRef;
 	const(TimeOfDay)* TimeRef;
 	const(.Date)* DateRef;
 	const(string)* TextRef;
@@ -209,7 +244,7 @@ package MySQLVal _toVal(Variant v)
 			enum FQN = T.stringof;
 	}
 
-	alias BasicTypes = AliasSeq!(bool, byte, ubyte, short, ushort, int, uint, long, ulong, float, double, DateTime, TimeOfDay, Date, Timestamp);
+	alias BasicTypes = AliasSeq!(bool, byte, ubyte, short, ushort, int, uint, long, ulong, float, double, DateTimeExt, TimeOfDay, Date, Timestamp);
 	alias ArrayTypes = AliasSeq!(char[], const(char)[],
 								 ubyte[], const(ubyte)[], immutable(ubyte)[]);
 

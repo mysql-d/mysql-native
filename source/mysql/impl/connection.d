@@ -327,12 +327,15 @@ package(mysql):
 	/// Releases all prepared statements that are queued for release.
 	void releaseQueued()
 	{
+		const(char)[][] toRemove;
 		foreach(sql, info; preparedRegistrations.directLookup)
-		if(info.queuedForRelease)
-		{
-			immediateReleasePrepared(this, info.statementId);
+			if(info.queuedForRelease)
+			{
+				immediateReleasePrepared(this, info.statementId);
+				toRemove ~= sql;
+			}
+		foreach(sql;toRemove)
 			preparedRegistrations.directLookup.remove(sql);
-		}
 	}
 
 	/// Returns null if not found
