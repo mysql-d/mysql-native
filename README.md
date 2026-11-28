@@ -25,7 +25,7 @@ type based on whether Vibe.d is used in your project. (If you use
 Otherwise, you can use `-version=Have_vibe_d_core` to force Vibe.d sockets
 instead of Phobos ones.)
 
-Should work on D compilers from 2.068 through to the latest release but the CI only tests against version 2.085.1 and above. For a full list see the builds on Github Actions. Note that dub from prior to 2.085.0 will not work, but this is not an issue with mysql-native. To build with prior compilers, use a newer version of dub.
+Requires a D compiler with frontend 2.094 or later (DMD 2.094, LDC 1.24): the CI tests 2.094.2 and above. For a full list see the builds on Github Actions.
 
 In this document:
 * [API](#api)
