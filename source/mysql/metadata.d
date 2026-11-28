@@ -123,6 +123,7 @@ private:
 			// MySQL 8.4 and newer insert a Language column after Type: 12 columns
 			// instead of 11. Skip it and number the other columns as before.
 			const hasLanguage = r.length > 11;
+			assert(!hasLanguage || r.getName(3) == "Language", "Language column expected, not: " ~ r.getName(3));
 			foreach (int j; 0..(hasLanguage ? 12 : 11))
 			{
 				if (hasLanguage && j == 3)
