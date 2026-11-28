@@ -64,7 +64,8 @@ debug(MYSQLN_TESTS)
 	}
 	catch (Exception x)
 	{
-		assert(x.msg.indexOf("Access denied") > 0);
+		// MySQL 8.4 removed COM_REFRESH: "Unknown command"
+		assert(x.msg.indexOf("Access denied") > 0 || x.msg.indexOf("Unknown command") > 0);
 	}
 	string stats = cn.serverStats();
 	assert(stats.indexOf("Uptime") == 0);
@@ -459,6 +460,7 @@ debug(MYSQLN_TESTS)
 {
 	static void test(bool doSafe)()
 	{
+		mixin(doImports(doSafe, "commands"));
 		mixin(scopedCn);
 		auto schemaName = cn.currentDB;
 		MetaData md = MetaData(cn);
@@ -574,10 +576,26 @@ debug(MYSQLN_TESTS)
 				ca[18].nullable && ca[18].type == "decimal" && ca[18].charsMax == -1 && ca[18].octetsMax == -1 &&
 				ca[18].numericPrecision == 11 && ca[18].numericScale == 4 && ca[18].charSet == "<NULL>" && ca[18].collation == "<NULL>"  &&
 				ca[18].colType == "decimal(11,4)");
-		MySQLProcedure[] pa = md.functions();
-		//assert(pa[0].db == schemaName && pa[0].name == "hello" && pa[0].type == "FUNCTION");
-		//pa = md.procedures();
-		//assert(pa[0].db == schemaName && pa[0].name == "insert2" && pa[0].type == "PROCEDURE");
+		// SHOW FUNCTION/PROCEDURE STATUS: MySQL 8.4 and newer add a Language column
+		exec(cn, `DROP FUNCTION IF EXISTS mdfunc`);
+		exec(cn, `CREATE FUNCTION mdfunc (s CHAR(20)) RETURNS CHAR(50) DETERMINISTIC RETURN s`);
+		exec(cn, `DROP PROCEDURE IF EXISTS mdproc`);
+		exec(cn, `CREATE PROCEDURE mdproc () COMMENT 'metadata test' SELECT 1`);
+		void checkRoutine(MySQLProcedure[] pa, string name, string type, string comment)
+		{
+			foreach (p; pa)
+				if (p.name == name)
+				{
+					assert(p.db == schemaName && p.type == type && p.comment == comment);
+					assert(p.definer.length && p.securityType == "DEFINER");
+					assert(p.created != DateTime.init && p.modified != DateTime.init);
+					assert(p.charSetClient.length && p.collationConnection.length && p.collationDB.length);
+					return;
+				}
+			assert(0, name ~ " not listed");
+		}
+		checkRoutine(md.functions(), "mdfunc", "FUNCTION", "");
+		checkRoutine(md.procedures(), "mdproc", "PROCEDURE", "metadata test");
 	}
 
 	test!false();
@@ -1029,8 +1047,9 @@ debug(MYSQLN_TESTS)
 		auto row = cn.queryRow(stmt).get;
 		assert(row.length == 4);
 		assert(row[0] == "utf8mb4");
-		// note, the second possibility is from mysql 8
-		assert(row[1] == "utf8mb4_general_ci" || row[1] == "utf8mb4_0900_ai_ci");
+		// note, the second possibility is from mysql 8, the third from MariaDB 11.4
+		assert(row[1] == "utf8mb4_general_ci" || row[1] == "utf8mb4_0900_ai_ci"
+			|| row[1] == "utf8mb4_uca1400_ai_ci");
 		assert(row[2] == "UTF-8 Unicode");
 		assert(row[3] == 4);
 	}
